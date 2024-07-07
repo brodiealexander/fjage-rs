@@ -29,7 +29,7 @@ pub unsafe extern "C" fn fjage_tcp_open(hostname: *const c_char, port: c_int) ->
             .unwrap()
             .block_on(async { Gateway::new_tcp(&hostname, port.try_into().unwrap()).await }),
     );
-    let val = Box::into_raw(gw); // IIRC This should work, but we are obligated to destroy this later
+    let val = Box::into_raw(gw);
     return val;
 }
 
@@ -213,32 +213,20 @@ pub unsafe extern "C" fn fjage_agents_for_service(
     }
     //let result = result();
 
-    for n in 0..std::cmp::max(max, result.len().try_into().unwrap()) {
+    for n in 0..std::cmp::min(max, result.len().try_into().unwrap()) {
         let str = result.get(n as usize).unwrap();
         if agents.is_null() {
-            println!("WAS NULL");
             return result.len() as c_int;
         }
-        println!("About to attempt: {}", str);
+
         let c_str = CString::new(str.clone()).unwrap();
-        println!("Deref");
 
         let curr_aid_ptr = agents;
-        println!("add {}*{}", n, std::mem::size_of::<*const u32>());
+
         let curr_aid_ptr = curr_aid_ptr.add((n) as usize);
-        //let cur = curr_aid_ptr.as_mut().unwrap();
-        println!("IsNull {}", (*curr_aid_ptr).is_null());
-        //println!("IsNull {}", (*cur).is_null());
-        //let aid_ptr: &mut [u8] = slice::from_raw_parts_mut((curr_aid_ptr).cast(), str.len());
-        println!("Exec-Copy");
 
         (*curr_aid_ptr) = c_api_alloc_cstr(String::from(str)).cast_mut();
-
-        println!("IsNull {}", (*curr_aid_ptr).is_null());
-
-        println!("Copied");
     }
-    println!("Finished copying");
 
     return result.len() as c_int;
 }
@@ -255,7 +243,7 @@ pub unsafe extern "C" fn fjage_agents_for_service(
 pub unsafe extern "C" fn fjage_send(gw: *mut Gateway, msg: *mut GenericMessage) -> c_int {
     GenericMessage::send(gw, msg); //auto-frees
 
-    return 0 as c_int; // make this behave eventually
+    return 0 as c_int;
 }
 
 //*// Receive a message. The received message should be freed by the caller using fjage_msg_destroy().
@@ -301,7 +289,6 @@ pub unsafe extern "C" fn fjage_receive(
         })
     };
 
-    //let msg = ;
     if msg.is_ok() {
         let msg = msg.unwrap();
         if msg.is_none() {
@@ -310,9 +297,6 @@ pub unsafe extern "C" fn fjage_receive(
         let boxed_msg = GenericMessage::alloc();
         boxed_msg.as_mut().unwrap().msg = msg.unwrap();
         return boxed_msg;
-
-        //let boxed_msg = Box::new(msg.unwrap()); // Places received message on the heap and releases control to C. Must free later using c_api_msg_free
-        //return Box::into_raw(boxed_msg).cast();
     } else {
         return std::ptr::null();
     }
@@ -358,7 +342,6 @@ pub unsafe extern "C" fn fjage_receive_any(
         .await
     });
 
-    //let msg = ;
     if msg.is_ok() {
         let msg = msg.unwrap();
         if msg.is_none() {
@@ -367,9 +350,6 @@ pub unsafe extern "C" fn fjage_receive_any(
         let boxed_msg = GenericMessage::alloc();
         boxed_msg.as_mut().unwrap().msg = msg.unwrap();
         return boxed_msg;
-
-        //let boxed_msg = Box::new(msg.unwrap()); // Places received message on the heap and releases control to C. Must free later using c_api_msg_free
-        //return Box::into_raw(boxed_msg).cast();
     } else {
         return std::ptr::null();
     }
@@ -446,6 +426,5 @@ pub unsafe extern "C" fn fjage_aid_topic(topic: *const c_char) -> *const c_char 
 //void fjage_aid_destroy(fjage_aid_t aid);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_aid_destroy(aid: *mut c_char) {
-    //c_api_free_aid(cstr_to_String(aid));
     c_api_free_cstr(aid);
 }

@@ -27,7 +27,6 @@ pub unsafe extern "C" fn fjage_msg_create(clazz: *mut c_char, perf: c_int) -> *m
     msg_ref.clazz = cstr_to_String(clazz);
     msg_ref.data.perf = c_api_int_to_perf(perf);
     return msg;
-    //todo!(); // MAKE THIS RESPECT PERF AND CLAZZ
 }
 
 //*// Destroy a message. Once destroyed, the message is considered invalid and should
@@ -49,7 +48,6 @@ pub unsafe extern "C" fn fjage_msg_destroy(msg: *mut GenericMessage) {
 //void fjage_msg_set_recipient(fjage_msg_t msg, fjage_aid_t aid);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_set_recipient(msg: *mut GenericMessage, aid: *const c_char) {
-    //msg.as_mut().unwrap().msg.data.recipient = cstr_to_String(aid);
     GenericMessage::strkey_set(msg, "recipient", Value::String(cstr_to_String(aid)));
 }
 
@@ -77,12 +75,6 @@ pub unsafe extern "C" fn fjage_msg_add_string(
     key: *const c_char,
     value: *const c_char,
 ) {
-    /*msg.as_mut()
-    .unwrap()
-    .msg
-    .data
-    .generic_fields
-    .insert(cstr_to_String(key), Value::String(cstr_to_String(value)));*/
     GenericMessage::set(msg, key, Value::String(cstr_to_String(value)));
 }
 
