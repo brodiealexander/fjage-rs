@@ -10,3 +10,11 @@ A general description of what exists so far:
 - core/param.rs: implementation of ParameterReq and ParameterRsp as well as setters and getters
 - remote/gateway.rs: main implementation of the gateway. Resembles a container.
 - ffi/ : implementation of the C API compatibility layer
+
+# Getting Started / Running the fjåge C gateway tests
+
+To run the fjåge C gateway tests:
+- run `cargo build` in the project root
+- navigate to `tests/docker` and run `./launch-arm64.sh` or `./launch-amd64.sh`. 
+- once you see the fjåge shell prompt, type `run 'dummy'` to load the test fixture agent.
+- in another terminal, navigate to `/tests/fjage-c` and run `make fjage-rs-test`. Then run `./test_fjage` with a container running.
