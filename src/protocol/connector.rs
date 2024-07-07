@@ -3,8 +3,7 @@
 use tokio::{
     io::{self, AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader, BufWriter},
     net::TcpStream,
-    runtime::{Handle, Runtime},
-    sync::mpsc::{self, Receiver, Sender, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
 };
 
 use super::frame::Frame;
@@ -40,7 +39,7 @@ impl TcpConnector {
             let frame = Frame::from_json(&line_in);
             if frame.is_some() {
                 let frame = frame.unwrap();
-                println!("\nTcpConnector << Remote: {:?}", frame);
+                //println!("\nTcpConnector << Remote: {:?}", frame);
                 sender.send(frame).unwrap();
             } else {
                 println!("Error: TcpConnector could not parse frame: {:?}", line_in);
@@ -56,17 +55,15 @@ impl TcpConnector {
                 continue;
             }
             let mut frame = frame.unwrap();
-            println!("\nTcpConnector >> Remote: {:?}", frame);
+            //println!("\nTcpConnector >> Remote: {:?}", frame);
             writer.write(frame.to_json().as_bytes()).await.unwrap();
             writer.write(b"\n").await.unwrap();
             writer.flush().await.unwrap();
-            //let bytes_read = reader.read_line(&mut line_in);
         }
     }
 }
 impl Connector for TcpConnector {
     async fn connect(&self) -> (UnboundedSender<Frame>, UnboundedReceiver<Frame>) {
-        //let handle = Handle::current();
         let input_stream = TcpStream::connect(format!("{}:{}", self.hostname, self.port))
             .await
             .unwrap();

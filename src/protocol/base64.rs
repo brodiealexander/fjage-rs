@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use base64::prelude::*;
 use serde_json::{Map, Value};
 

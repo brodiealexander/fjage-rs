@@ -15,7 +15,28 @@ use crate::{
     remote::gateway::Gateway,
 };
 
-pub unsafe fn cstr_to_String(str: *const c_char) -> String {
+#[macro_export]
+macro_rules! msg_get_array {
+    ($msg:expr, $key:expr, $value:expr, $maxlen:expr, $type:ty, $map_fn:expr) => {
+        'inner: {
+            let val = fjage_msg_t::get($msg, $key);
+            if !val.is_array() {
+                break 'inner -1;
+            }
+            let val = val.as_array().unwrap();
+            let val: Vec<$type> = val.iter().map($map_fn).collect();
+            let len = val.len();
+            if $value.is_null() {
+                break 'inner len as c_int;
+            }
+            let copy_len = min(len, $maxlen as usize);
+            $value.copy_from(val.as_ptr(), copy_len);
+            copy_len as c_int
+        }
+    };
+}
+
+pub unsafe fn c_api_cstr_to_string(str: *const c_char) -> String {
     let str = CStr::from_ptr(str);
     return String::from_utf8_lossy(str.to_bytes()).to_string();
 }
@@ -27,7 +48,7 @@ pub unsafe fn c_api_alloc_cstr(aid: String) -> *const c_char {
     return aid_ptr.cast();
 }
 pub unsafe fn c_api_free_cstr(aid: *mut c_char) {
-    let aid_ptr: Box<&[u8]> = Box::from_raw(aid.cast());
+    let _aid_ptr: Box<&[u8]> = Box::from_raw(aid.cast());
 }
 
 pub unsafe fn c_api_alloc_msg() -> *mut Message {
@@ -36,7 +57,7 @@ pub unsafe fn c_api_alloc_msg() -> *mut Message {
     return Box::into_raw(msg);
 }
 pub unsafe fn c_api_free_msg(msg: *mut Message) {
-    let msg = Box::from_raw(msg);
+    let _msg = Box::from_raw(msg);
     println!("Deallocated a message");
 }
 
@@ -75,14 +96,15 @@ pub unsafe fn c_api_int_to_perf(perf: c_int) -> Performative {
     }
 }
 
-pub struct GenericMessage {
+#[allow(non_camel_case_types)]
+pub struct fjage_msg_t {
     //msg: GenericMessage,
     pub msg: Message,
     heap: Vec<*const c_char>,
 }
-impl GenericMessage {
-    pub unsafe fn alloc() -> *mut GenericMessage {
-        Box::into_raw(Box::new(GenericMessage {
+impl fjage_msg_t {
+    pub unsafe fn alloc() -> *mut fjage_msg_t {
+        Box::into_raw(Box::new(fjage_msg_t {
             msg: Message::new(),
             heap: Vec::new(),
         }))
@@ -92,32 +114,32 @@ impl GenericMessage {
         self.heap.push(str_ptr);
         return str_ptr;
     }
-    pub unsafe fn alloc_str_s(msg: *mut GenericMessage, str: String) -> *const c_char {
+    pub unsafe fn alloc_str_s(msg: *mut fjage_msg_t, str: String) -> *const c_char {
         let str_ptr = c_api_alloc_cstr(str);
         msg.as_mut().unwrap().heap.push(str_ptr);
         return str_ptr;
     }
-    pub unsafe fn free(msg: *mut GenericMessage) {
+    pub unsafe fn free(msg: *mut fjage_msg_t) {
         if msg.is_null() {
             return;
         }
         for str in msg.as_ref().unwrap().heap.iter() {
             c_api_free_cstr(str.cast_mut());
         }
-        let msg: Box<GenericMessage> = Box::from_raw(msg);
+        let _msg: Box<fjage_msg_t> = Box::from_raw(msg);
     }
-    pub unsafe fn send(gw: *mut Gateway, msg: *mut GenericMessage) {
+    pub unsafe fn send(gw: *mut Gateway, msg: *mut fjage_msg_t) {
         gw.as_mut()
             .unwrap()
             .send_raw(msg.as_mut().unwrap().msg.clone());
-        GenericMessage::free(msg);
+        fjage_msg_t::free(msg);
     }
     pub unsafe fn request(
         gw: *mut Gateway,
-        msg: *mut GenericMessage,
+        msg: *mut fjage_msg_t,
         timeout: c_long,
-    ) -> *const GenericMessage {
-        let rt = super::runtime.as_mut().unwrap();
+    ) -> *const fjage_msg_t {
+        let rt = super::RUNTIME.as_mut().unwrap();
         let req = msg.as_mut().unwrap().msg.clone();
         let rsp = rt.block_on(async {
             tokio::time::timeout(
@@ -128,24 +150,24 @@ impl GenericMessage {
             )
             .await
         });
-        GenericMessage::free(msg);
+        fjage_msg_t::free(msg);
         if rsp.is_ok() {
             let rsp = rsp.unwrap();
             if rsp.is_none() {
                 return std::ptr::null();
             }
-            let boxed_msg = GenericMessage::alloc();
+            let boxed_msg = fjage_msg_t::alloc();
             boxed_msg.as_mut().unwrap().msg = rsp.unwrap();
             return boxed_msg;
         } else {
             return std::ptr::null();
         }
     }
-    pub unsafe fn set(msg: *mut GenericMessage, key: *const c_char, value: Value) {
+    pub unsafe fn set(msg: *mut fjage_msg_t, key: *const c_char, value: Value) {
         let msg = msg.as_mut().unwrap();
         let msg = &mut msg.msg;
         let data = &mut msg.data;
-        let key = cstr_to_String(key);
+        let key = c_api_cstr_to_string(key);
 
         match key.as_str() {
             "msgID" => {
@@ -174,19 +196,19 @@ impl GenericMessage {
             }
         }
     }
-    pub unsafe fn strkey_get(msg: *mut GenericMessage, key: &str) -> Value {
+    pub unsafe fn strkey_get(msg: *mut fjage_msg_t, key: &str) -> Value {
         let key = CString::new(key).unwrap();
-        return GenericMessage::get(msg, key.as_ptr());
+        return fjage_msg_t::get(msg, key.as_ptr());
     }
-    pub unsafe fn strkey_set(msg: *mut GenericMessage, key: &str, value: Value) {
+    pub unsafe fn strkey_set(msg: *mut fjage_msg_t, key: &str, value: Value) {
         let key = CString::new(key).unwrap();
-        return GenericMessage::set(msg, key.as_ptr(), value);
+        return fjage_msg_t::set(msg, key.as_ptr(), value);
     }
-    pub unsafe fn get(msg: *mut GenericMessage, key: *const c_char) -> Value {
+    pub unsafe fn get(msg: *mut fjage_msg_t, key: *const c_char) -> Value {
         let msg = msg.as_mut().unwrap();
         let msg = &mut msg.msg;
         let data = &mut msg.data;
-        let key = cstr_to_String(key);
+        let key = c_api_cstr_to_string(key);
 
         println!("getting: {}", key);
 
@@ -231,8 +253,8 @@ pub unsafe fn c_api_set_param(
 ) -> c_int {
     let val = c_api_exec_timeout_ms(
         gw.as_mut().unwrap().set_param(
-            &cstr_to_String(aid),
-            &cstr_to_String(param),
+            &c_api_cstr_to_string(aid),
+            &c_api_cstr_to_string(param),
             value.clone(),
             ndx as i64,
         ),
@@ -259,9 +281,11 @@ pub unsafe fn c_api_get_param(
     //    tokio::time::timeout(
     //        Duration::from_millis(1000),
     let val = c_api_exec_timeout_ms(
-        gw.as_mut()
-            .unwrap()
-            .get_param(&cstr_to_String(aid), &cstr_to_String(param), ndx as i64),
+        gw.as_mut().unwrap().get_param(
+            &c_api_cstr_to_string(aid),
+            &c_api_cstr_to_string(param),
+            ndx as i64,
+        ),
         1000 as c_int,
     );
     //    )
@@ -279,13 +303,13 @@ pub unsafe fn c_api_get_param(
 
 pub unsafe fn c_api_exec_timeout_ms<F: Future>(
     future: F,
-    timeout: c_int,
+    _timeout: c_int,
 ) -> Result<<F as std::future::Future>::Output, Elapsed> {
-    let rt = super::runtime.as_mut().unwrap();
+    let rt = super::RUNTIME.as_mut().unwrap();
     return rt.block_on(async { tokio::time::timeout(Duration::from_millis(1000), future).await });
 }
 
 pub unsafe fn c_api_exec<F: Future>(future: F) -> <F as std::future::Future>::Output {
-    let rt = super::runtime.as_mut().unwrap();
+    let rt = super::RUNTIME.as_mut().unwrap();
     return rt.block_on(async { future.await });
 }

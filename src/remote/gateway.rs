@@ -1,16 +1,13 @@
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
-use tokio::sync::{broadcast, Mutex};
-use uuid::Uuid;
-
-//use crate::core::agent::AgentID;
-//use crate::core::container::Container;
 use crate::core::message::Message;
 use crate::core::param::{ParameterManipulation, ParameterReq, ParameterRsp};
 use crate::protocol::connector::TcpConnector;
 use crate::protocol::frame::Frame;
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::sync::{broadcast, Mutex};
+use uuid::Uuid;
 
 use crate::protocol::{connector::Connector, frame::*};
 
@@ -27,7 +24,7 @@ pub struct Gateway {
     agents: Arc<Mutex<Vec<String>>>,
     subscriptions: Arc<Mutex<Vec<String>>>,
     agent_id: String,
-    msg_queue: Arc<Mutex<Vec<Message>>>, //parent: Box<Container>,
+    msg_queue: Arc<Mutex<Vec<Message>>>,
     msg_interrupt_listener: Arc<Mutex<mpsc::Receiver<GatewayReceiveInterrupt>>>,
     msg_interrupt_sender: mpsc::Sender<GatewayReceiveInterrupt>,
 }
@@ -144,7 +141,7 @@ impl Gateway {
         let rsp = self
             .query(Frame::Request(RequestFrame::agents { id: id.clone() }))
             .await
-            .get_agentIDs();
+            .get_agent_ids();
         return rsp.unwrap();
     }
     pub async fn services(&mut self) -> Vec<String> {
@@ -171,7 +168,7 @@ impl Gateway {
                 service: service.to_string(),
             }))
             .await;
-        return rsp.get_agentID();
+        return rsp.get_agent_id();
     }
     pub async fn agents_for_service(&mut self, service: &str) -> Vec<String> {
         let rsp = self
@@ -180,7 +177,7 @@ impl Gateway {
                 service: service.to_string(),
             }))
             .await;
-        return rsp.get_agentIDs().unwrap();
+        return rsp.get_agent_ids().unwrap();
     }
     pub fn send_raw(&mut self, mut msg: Message) {
         if msg.data.sender.is_empty() {
@@ -225,79 +222,17 @@ impl Gateway {
         );
         self.clear_interrupt().await;
         self.send(to, msg);
-
-        loop {
-            let msg = {
-                let mut msg = None;
-                let mut msg_pos = None;
-                let mut queue = self.msg_queue.lock().await;
-                for (pos, msg) in queue.iter().enumerate() {
-                    if msg
-                        .data
-                        .inReplyTo
-                        .as_ref()
-                        .is_some_and(|in_reply_to| in_reply_to == &id)
-                    {
-                        msg_pos = Some(pos);
-                    }
-                }
-                if msg_pos.is_some() {
-                    msg = Some(queue.remove(msg_pos.unwrap()));
-                }
-                msg
-            };
-            if msg.is_some() {
-                return Some(msg.unwrap());
-            }
-
-            let int = self
-                .msg_interrupt_listener
-                .lock()
-                .await
-                .recv()
-                .await
-                .unwrap();
-
-            match int {
-                GatewayReceiveInterrupt::CANCEL => return None,
-                _ => (),
-            };
-        }
+        return self.recv(None, Some(id)).await;
     }
 
     pub async fn clear_interrupt(&mut self) {
         while self.msg_interrupt_listener.lock().await.try_recv().is_ok() {}
     }
-
-    pub async fn recv(&mut self) -> Option<Message> {
-        self.clear_interrupt().await;
-        loop {
-            let msg = {
-                let mut queue = self.msg_queue.lock().await;
-                if queue.is_empty() {
-                    None
-                } else {
-                    Some(queue.pop().unwrap())
-                }
-            };
-            if msg.is_some() {
-                return Some(msg.unwrap());
-            }
-            let int = self
-                .msg_interrupt_listener
-                .lock()
-                .await
-                .recv()
-                .await
-                .unwrap();
-
-            match int {
-                GatewayReceiveInterrupt::CANCEL => return None,
-                _ => (),
-            };
-        }
-    }
-    pub async fn recv_any(&mut self, clazzes: Vec<String>) -> Option<Message> {
+    pub async fn recv(
+        &mut self,
+        clazzes: Option<Vec<String>>,
+        id: Option<String>,
+    ) -> Option<Message> {
         self.clear_interrupt().await;
         loop {
             let msg = {
@@ -305,7 +240,7 @@ impl Gateway {
                 let mut msg_pos = None;
                 let mut queue = self.msg_queue.lock().await;
                 for (pos, msg) in queue.iter().enumerate() {
-                    if clazzes.contains(&msg.clazz) {
+                    if msg.check_clazz_is(&clazzes) && msg.check_in_reply_to_is(&id) {
                         msg_pos = Some(pos);
                     }
                 }

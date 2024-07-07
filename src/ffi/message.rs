@@ -17,14 +17,16 @@ use std::{
 
 use serde_json::Value;
 
-use super::util::{c_api_int_to_perf, c_api_perf_to_int, cstr_to_String, GenericMessage};
+use crate::msg_get_array;
+
+use super::util::{c_api_cstr_to_string, c_api_int_to_perf, c_api_perf_to_int, fjage_msg_t};
 
 //fjage_msg_t fjage_msg_create(const char *clazz, fjage_perf_t perf);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_create(clazz: *mut c_char, perf: c_int) -> *mut GenericMessage {
-    let msg = GenericMessage::alloc();
+pub unsafe extern "C" fn fjage_msg_create(clazz: *mut c_char, perf: c_int) -> *mut fjage_msg_t {
+    let msg = fjage_msg_t::alloc();
     let msg_ref = &mut msg.as_mut().unwrap().msg;
-    msg_ref.clazz = cstr_to_String(clazz);
+    msg_ref.clazz = c_api_cstr_to_string(clazz);
     msg_ref.data.perf = c_api_int_to_perf(perf);
     return msg;
 }
@@ -36,8 +38,8 @@ pub unsafe extern "C" fn fjage_msg_create(clazz: *mut c_char, perf: c_int) -> *m
 
 //void fjage_msg_destroy(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_destroy(msg: *mut GenericMessage) {
-    GenericMessage::free(msg);
+pub unsafe extern "C" fn fjage_msg_destroy(msg: *mut fjage_msg_t) {
+    fjage_msg_t::free(msg);
 }
 
 //*// Set the recipient of a message.
@@ -47,8 +49,8 @@ pub unsafe extern "C" fn fjage_msg_destroy(msg: *mut GenericMessage) {
 
 //void fjage_msg_set_recipient(fjage_msg_t msg, fjage_aid_t aid);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_set_recipient(msg: *mut GenericMessage, aid: *const c_char) {
-    GenericMessage::strkey_set(msg, "recipient", Value::String(cstr_to_String(aid)));
+pub unsafe extern "C" fn fjage_msg_set_recipient(msg: *mut fjage_msg_t, aid: *const c_char) {
+    fjage_msg_t::strkey_set(msg, "recipient", Value::String(c_api_cstr_to_string(aid)));
 }
 
 //*// Set the message ID of the request which is being responded to.
@@ -58,8 +60,8 @@ pub unsafe extern "C" fn fjage_msg_set_recipient(msg: *mut GenericMessage, aid: 
 
 //void fjage_msg_set_in_reply_to(fjage_msg_t msg, const char *id);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_set_in_reply_to(msg: *mut GenericMessage, id: *const c_char) {
-    msg.as_mut().unwrap().msg.data.inReplyTo = Some(cstr_to_String(id));
+pub unsafe extern "C" fn fjage_msg_set_in_reply_to(msg: *mut fjage_msg_t, id: *const c_char) {
+    msg.as_mut().unwrap().msg.data.inReplyTo = Some(c_api_cstr_to_string(id));
 }
 
 //*// Add a string value to a message.
@@ -71,11 +73,11 @@ pub unsafe extern "C" fn fjage_msg_set_in_reply_to(msg: *mut GenericMessage, id:
 //void fjage_msg_add_string(fjage_msg_t msg, const char *key, const char *value);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_string(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *const c_char,
 ) {
-    GenericMessage::set(msg, key, Value::String(cstr_to_String(value)));
+    fjage_msg_t::set(msg, key, Value::String(c_api_cstr_to_string(value)));
 }
 
 //*// Add an integer value to a message.
@@ -87,11 +89,11 @@ pub unsafe extern "C" fn fjage_msg_add_string(
 //void fjage_msg_add_int(fjage_msg_t msg, const char *key, int value);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_int(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: c_int,
 ) {
-    GenericMessage::set(msg, key, Value::from(value));
+    fjage_msg_t::set(msg, key, Value::from(value));
 }
 
 //*// Add a long value to a message.
@@ -103,11 +105,11 @@ pub unsafe extern "C" fn fjage_msg_add_int(
 //void fjage_msg_add_long(fjage_msg_t msg, const char *key, long value);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_long(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: c_long,
 ) {
-    GenericMessage::set(msg, key, Value::from(value));
+    fjage_msg_t::set(msg, key, Value::from(value));
 }
 
 //*// Add a floating point value to a message.
@@ -119,21 +121,21 @@ pub unsafe extern "C" fn fjage_msg_add_long(
 //void fjage_msg_add_float(fjage_msg_t msg, const char *key, float value);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_float(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: c_float,
 ) {
-    GenericMessage::set(msg, key, Value::from(value));
+    fjage_msg_t::set(msg, key, Value::from(value));
 }
 
 /* NOT IN THE BASE C API */
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_double(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: c_double,
 ) {
-    GenericMessage::set(msg, key, Value::from(value));
+    fjage_msg_t::set(msg, key, Value::from(value));
 }
 
 //*// Add a boolean value to a message.
@@ -145,11 +147,11 @@ pub unsafe extern "C" fn fjage_msg_add_double(
 //void fjage_msg_add_bool(fjage_msg_t msg, const char *key, bool value);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_bool(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: bool,
 ) {
-    GenericMessage::set(msg, key, Value::Bool(value));
+    fjage_msg_t::set(msg, key, Value::Bool(value));
 }
 
 //*// Add a byte array value to a message.
@@ -162,14 +164,14 @@ pub unsafe extern "C" fn fjage_msg_add_bool(
 //void fjage_msg_add_byte_array(fjage_msg_t msg, const char *key, uint8_t *value, int len);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_byte_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut u8,
     len: c_int,
 ) {
     let arr = slice::from_raw_parts(value, len as usize);
     //let arr: Vec<u8> = Vec::from_raw_parts(value, len as usize, len as usize);
-    GenericMessage::set(msg, key, Value::from(arr));
+    fjage_msg_t::set(msg, key, Value::from(arr));
 }
 
 //*// Add an integer array value to a message.
@@ -182,25 +184,25 @@ pub unsafe extern "C" fn fjage_msg_add_byte_array(
 //void fjage_msg_add_int_array(fjage_msg_t msg, const char *key, int32_t *value, int len);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_int_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut i32,
     len: c_int,
 ) {
     let arr = slice::from_raw_parts(value, len as usize);
-    GenericMessage::set(msg, key, Value::from(arr));
+    fjage_msg_t::set(msg, key, Value::from(arr));
 }
 
 /* NOT IN BASE C API */
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_long_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *const i64,
     len: c_int,
 ) {
     let arr = slice::from_raw_parts(value, len as usize);
-    GenericMessage::set(msg, key, Value::from(arr));
+    fjage_msg_t::set(msg, key, Value::from(arr));
 }
 
 //*// Add a floating point array value to a message.
@@ -213,26 +215,26 @@ pub unsafe extern "C" fn fjage_msg_add_long_array(
 //void fjage_msg_add_float_array(fjage_msg_t msg, const char *key, float *value, int len);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_float_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut c_float,
     len: c_int,
 ) {
     let arr = slice::from_raw_parts(value, len as usize);
-    GenericMessage::set(msg, key, Value::from(arr));
+    fjage_msg_t::set(msg, key, Value::from(arr));
 }
 
 /* NOT IN BASE C API */
 
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_add_double_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *const c_double,
     len: c_int,
 ) {
     let arr = slice::from_raw_parts(value, len as usize);
-    GenericMessage::set(msg, key, Value::from(arr));
+    fjage_msg_t::set(msg, key, Value::from(arr));
 }
 
 //*// Get the message ID. The string returned by this function should
@@ -244,9 +246,9 @@ pub unsafe extern "C" fn fjage_msg_add_double_array(
 
 //const char *fjage_msg_get_id(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_get_id(msg: *mut GenericMessage) -> *const c_char {
+pub unsafe extern "C" fn fjage_msg_get_id(msg: *mut fjage_msg_t) -> *const c_char {
     //let id = &msg.as_ref().unwrap().msg.data.msgID;
-    let id = GenericMessage::strkey_get(msg, "msgID")
+    let id = fjage_msg_t::strkey_get(msg, "msgID")
         .as_str()
         .unwrap()
         .to_string();
@@ -263,7 +265,7 @@ pub unsafe extern "C" fn fjage_msg_get_id(msg: *mut GenericMessage) -> *const c_
 
 //const char *fjage_msg_get_clazz(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_get_clazz(msg: *mut GenericMessage) -> *const c_char {
+pub unsafe extern "C" fn fjage_msg_get_clazz(msg: *mut fjage_msg_t) -> *const c_char {
     let clazz = &msg.as_ref().unwrap().msg.clazz;
     let clazz = msg.as_mut().unwrap().alloc_str(clazz.clone());
     return clazz;
@@ -276,7 +278,7 @@ pub unsafe extern "C" fn fjage_msg_get_clazz(msg: *mut GenericMessage) -> *const
 
 //fjage_perf_t fjage_msg_get_performative(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_get_performative(msg: *mut GenericMessage) -> c_int {
+pub unsafe extern "C" fn fjage_msg_get_performative(msg: *mut fjage_msg_t) -> c_int {
     return c_api_perf_to_int(&msg.as_ref().unwrap().msg.data.perf);
 }
 
@@ -289,7 +291,7 @@ pub unsafe extern "C" fn fjage_msg_get_performative(msg: *mut GenericMessage) ->
 
 //fjage_aid_t fjage_msg_get_recipient(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_get_recipient(msg: *mut GenericMessage) -> *const c_char {
+pub unsafe extern "C" fn fjage_msg_get_recipient(msg: *mut fjage_msg_t) -> *const c_char {
     let recipient = &msg.as_ref().unwrap().msg.data.recipient;
     if recipient.is_empty() {
         return std::ptr::null();
@@ -307,7 +309,7 @@ pub unsafe extern "C" fn fjage_msg_get_recipient(msg: *mut GenericMessage) -> *c
 
 //fjage_aid_t fjage_msg_get_sender(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_get_sender(msg: *mut GenericMessage) -> *const c_char {
+pub unsafe extern "C" fn fjage_msg_get_sender(msg: *mut fjage_msg_t) -> *const c_char {
     let sender = &msg.as_ref().unwrap().msg.data.sender;
     let sender = msg.as_mut().unwrap().alloc_str(sender.clone());
     return sender;
@@ -322,7 +324,7 @@ pub unsafe extern "C" fn fjage_msg_get_sender(msg: *mut GenericMessage) -> *cons
 
 //const char *fjage_msg_get_in_reply_to(fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_msg_get_in_reply_to(msg: *mut GenericMessage) -> *const c_char {
+pub unsafe extern "C" fn fjage_msg_get_in_reply_to(msg: *mut fjage_msg_t) -> *const c_char {
     let irp = &msg.as_ref().unwrap().msg.data.inReplyTo;
     if irp.is_none() {
         return std::ptr::null();
@@ -344,14 +346,14 @@ pub unsafe extern "C" fn fjage_msg_get_in_reply_to(msg: *mut GenericMessage) -> 
 //const char *fjage_msg_get_string(fjage_msg_t msg, const char *key);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_string(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
 ) -> *const c_char {
-    let x = GenericMessage::get(msg, key);
+    let x = fjage_msg_t::get(msg, key);
     if x.is_null() {
         return std::ptr::null();
     }
-    return GenericMessage::alloc_str_s(msg, x.as_str().unwrap().to_string());
+    return fjage_msg_t::alloc_str_s(msg, x.as_str().unwrap_or("").to_string());
 }
 
 //*// Get an integer value.
@@ -364,11 +366,11 @@ pub unsafe extern "C" fn fjage_msg_get_string(
 //int fjage_msg_get_int(fjage_msg_t msg, const char *key, int defval);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_int(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     defval: c_int,
 ) -> c_int {
-    return GenericMessage::get(msg, key).as_i64().unwrap() as c_int;
+    return fjage_msg_t::get(msg, key).as_i64().unwrap_or(defval as i64) as c_int;
 }
 
 //*// Get a long value.
@@ -381,11 +383,11 @@ pub unsafe extern "C" fn fjage_msg_get_int(
 //long fjage_msg_get_long(fjage_msg_t msg, const char *key, long defval);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_long(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     defval: c_long,
 ) -> c_long {
-    return GenericMessage::get(msg, key).as_i64().unwrap() as c_long;
+    return fjage_msg_t::get(msg, key).as_i64().unwrap_or(defval as i64) as c_long;
 }
 
 //*// Get a floating point value.
@@ -398,21 +400,21 @@ pub unsafe extern "C" fn fjage_msg_get_long(
 //float fjage_msg_get_float(fjage_msg_t msg, const char *key, float defval);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_float(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     defval: c_float,
 ) -> c_float {
-    return GenericMessage::get(msg, key).as_f64().unwrap() as c_float;
+    return fjage_msg_t::get(msg, key).as_f64().unwrap_or(defval as f64) as c_float;
 }
 
 /* NOT IN BASE C API */
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_double(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     defval: c_double,
 ) -> c_double {
-    return GenericMessage::get(msg, key).as_f64().unwrap() as c_double;
+    return fjage_msg_t::get(msg, key).as_f64().unwrap_or(defval as f64) as c_double;
 }
 
 //*// Get a boolean value.
@@ -425,11 +427,11 @@ pub unsafe extern "C" fn fjage_msg_get_double(
 //bool fjage_msg_get_bool(fjage_msg_t msg, const char *key, bool defval);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_bool(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     defval: bool,
 ) -> bool {
-    return GenericMessage::get(msg, key).as_bool().unwrap();
+    return fjage_msg_t::get(msg, key).as_bool().unwrap_or(defval);
 }
 
 //*// Get a byte array value. If only the length of the array is desired (so that
@@ -445,21 +447,13 @@ pub unsafe extern "C" fn fjage_msg_get_bool(
 //int fjage_msg_get_byte_array(fjage_msg_t msg, const char *key, uint8_t *value, int maxlen);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_byte_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut u8,
     maxlen: c_int,
 ) -> c_int {
-    let val = GenericMessage::get(msg, key);
-    let val = val.as_array().unwrap();
-    let val: Vec<u8> = val.iter().map(|x| x.as_u64().unwrap() as u8).collect();
-    let len = val.len();
-    if value.is_null() {
-        return len as c_int;
-    }
-    value.copy_from(val.as_ptr(), len);
-    return len as c_int;
-    //unimplemented!();
+    return msg_get_array!(msg, key, value, maxlen, u8, |x| x.as_u64().unwrap_or(0)
+        as u8);
 }
 
 //*// Get an integer array value. If only the length of the array is desired (so that
@@ -475,41 +469,25 @@ pub unsafe extern "C" fn fjage_msg_get_byte_array(
 //int fjage_msg_get_int_array(fjage_msg_t msg, const char *key, int32_t *value, int maxlen);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_int_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut i32,
     maxlen: c_int,
 ) -> c_int {
-    let val = GenericMessage::get(msg, key);
-    let val = val.as_array().unwrap();
-    let val: Vec<i32> = val.iter().map(|x| x.as_i64().unwrap() as i32).collect();
-    let len = val.len();
-    if value.is_null() {
-        return len as c_int;
-    }
-    let copy_len = min(len, maxlen as usize);
-    value.copy_from(val.as_ptr(), copy_len);
-    return copy_len as c_int;
+    return msg_get_array!(msg, key, value, maxlen, i32, |x| x.as_i64().unwrap_or(0)
+        as i32);
 }
 
 /* NOT IN BASE C API */
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_long_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut i64,
     maxlen: c_int,
 ) -> c_int {
-    let val = GenericMessage::get(msg, key);
-    let val = val.as_array().unwrap();
-    let val: Vec<i64> = val.iter().map(|x| x.as_i64().unwrap() as i64).collect();
-    let len = val.len();
-    if value.is_null() {
-        return len as c_int;
-    }
-    let copy_len = min(len, maxlen as usize);
-    value.copy_from(val.as_ptr(), copy_len);
-    return copy_len as c_int;
+    return msg_get_array!(msg, key, value, maxlen, i64, |x| x.as_i64().unwrap_or(0)
+        as i64);
 }
 
 //*// Get a floating point array value. If only the length of the array is desired (so that
@@ -525,39 +503,23 @@ pub unsafe extern "C" fn fjage_msg_get_long_array(
 //int fjage_msg_get_float_array(fjage_msg_t msg, const char *key, float *value, int maxlen);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_float_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut f32,
     maxlen: c_int,
 ) -> c_int {
-    let val = GenericMessage::get(msg, key);
-    let val = val.as_array().unwrap();
-    let val: Vec<f32> = val.iter().map(|x| x.as_f64().unwrap() as f32).collect();
-    let len = val.len();
-    if value.is_null() {
-        return len as c_int;
-    }
-    let copy_len = min(len, maxlen as usize);
-    value.copy_from(val.as_ptr(), copy_len);
-    return copy_len as c_int;
+    return msg_get_array!(msg, key, value, maxlen, f32, |x| x.as_f64().unwrap_or(0.0)
+        as f32);
 }
 
 /* NOT IN BASE C API */
 #[no_mangle]
 pub unsafe extern "C" fn fjage_msg_get_double_array(
-    msg: *mut GenericMessage,
+    msg: *mut fjage_msg_t,
     key: *const c_char,
     value: *mut f64,
     maxlen: c_int,
 ) -> c_int {
-    let val = GenericMessage::get(msg, key);
-    let val = val.as_array().unwrap();
-    let val: Vec<f64> = val.iter().map(|x| x.as_f64().unwrap() as f64).collect();
-    let len = val.len();
-    if value.is_null() {
-        return len as c_int;
-    }
-    let copy_len = min(len, maxlen as usize);
-    value.copy_from(val.as_ptr(), copy_len);
-    return copy_len as c_int;
+    return msg_get_array!(msg, key, value, maxlen, f64, |x| x.as_f64().unwrap_or(0.0)
+        as f64);
 }

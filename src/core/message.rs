@@ -19,6 +19,24 @@ impl Message {
             data: Payload::new(),
         }
     }
+    pub fn check_clazz_is(&self, clazzes: &Option<Vec<String>>) -> bool {
+        if clazzes.is_some() {
+            return clazzes.as_ref().is_some_and(|x| x.contains(&self.clazz));
+        } else {
+            return true;
+        }
+    }
+    pub fn check_in_reply_to_is(&self, id: &Option<String>) -> bool {
+        if id.is_none() {
+            return true;
+        } else if self.data.inReplyTo.is_some() {
+            return id
+                .as_ref()
+                .is_some_and(|x| x == self.data.inReplyTo.as_ref().unwrap());
+        } else {
+            return false;
+        }
+    }
     pub fn decode_java_classes(&mut self) {
         for field in self.data.fields.clone().keys() {
             let msg_data = self.data.fields.get(field).unwrap();

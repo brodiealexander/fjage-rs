@@ -1,10 +1,10 @@
-use std::{
-    ffi::{c_char, c_int, c_long, CStr, CString},
-    time::Duration,
-};
-use tokio::{runtime::Runtime, time::Timeout};
+use std::ffi::{c_char, c_int, c_long, CStr, CString};
+use tokio::runtime::Runtime;
 
-use util::{c_api_alloc_cstr, c_api_exec, c_api_free_cstr, cstr_to_String, GenericMessage};
+use util::{
+    c_api_alloc_cstr, c_api_cstr_to_string, c_api_exec, c_api_exec_timeout_ms, c_api_free_cstr,
+    fjage_msg_t,
+};
 
 use crate::remote::gateway::Gateway;
 
@@ -12,19 +12,18 @@ pub mod message;
 pub mod param;
 pub mod util;
 
-pub static mut runtime: Option<Runtime> = None;
+pub static mut RUNTIME: Option<Runtime> = None;
 
 //fjage_gw_t fjage_tcp_open(const char *hostname, int port);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_tcp_open(hostname: *const c_char, port: c_int) -> *mut Gateway {
-    runtime = Some(Runtime::new().unwrap());
+    RUNTIME = Some(Runtime::new().unwrap());
 
     let hostname = CStr::from_ptr(hostname);
     let hostname = String::from_utf8_lossy(hostname.to_bytes()).to_string();
     let port: i32 = i32::from(port);
-    println!("OPENING TCP/GW {hostname}:{port}");
     let gw = Box::new(
-        runtime
+        RUNTIME
             .as_mut()
             .unwrap()
             .block_on(async { Gateway::new_tcp(&hostname, port.try_into().unwrap()).await }),
@@ -47,7 +46,7 @@ pub unsafe extern "C" fn fjage_rs232_open(
     baud: c_int,
     settings: *const c_char,
 ) -> *mut Gateway {
-    unimplemented!();
+    unimplemented!()
 }
 
 //*// Wakeup a device running fjåge master container via RS232.
@@ -76,9 +75,7 @@ pub unsafe extern "C" fn fjage_rs232_wakeup(
 //int fjage_close(fjage_gw_t gw);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_close(gw: *mut Gateway) -> c_int {
-    let mut k = Box::from_raw(gw);
-    println!("CLOSING GW");
-    println!("GW WAS: {}", k.get_agent_id());
+    let mut _gw = Box::from_raw(gw);
     return 0;
 }
 
@@ -106,10 +103,10 @@ pub unsafe extern "C" fn fjage_get_agent_id(gw: *mut Gateway) -> *const c_char {
 //int fjage_subscribe(fjage_gw_t gw, const fjage_aid_t topic);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_subscribe(gw: *mut Gateway, topic: *const c_char) -> c_int {
-    runtime
+    RUNTIME
         .as_mut()
         .unwrap()
-        .block_on(gw.as_mut().unwrap().subscribe(&cstr_to_String(topic)));
+        .block_on(gw.as_mut().unwrap().subscribe(&c_api_cstr_to_string(topic)));
     return 0;
 }
 
@@ -122,10 +119,11 @@ pub unsafe extern "C" fn fjage_subscribe(gw: *mut Gateway, topic: *const c_char)
 //int fjage_subscribe_agent(fjage_gw_t gw, const fjage_aid_t aid);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_subscribe_agent(gw: *mut Gateway, aid: *const c_char) -> c_int {
-    runtime
-        .as_mut()
-        .unwrap()
-        .block_on(gw.as_mut().unwrap().subscribe_agent(&cstr_to_String(aid)));
+    RUNTIME.as_mut().unwrap().block_on(
+        gw.as_mut()
+            .unwrap()
+            .subscribe_agent(&c_api_cstr_to_string(aid)),
+    );
     return 0;
 }
 
@@ -138,10 +136,11 @@ pub unsafe extern "C" fn fjage_subscribe_agent(gw: *mut Gateway, aid: *const c_c
 //int fjage_unsubscribe(fjage_gw_t gw, const fjage_aid_t topic);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_unsubscribe(gw: *mut Gateway, topic: *const c_char) -> c_int {
-    runtime
-        .as_mut()
-        .unwrap()
-        .block_on(gw.as_mut().unwrap().unsubscribe(&cstr_to_String(topic)));
+    RUNTIME.as_mut().unwrap().block_on(
+        gw.as_mut()
+            .unwrap()
+            .unsubscribe(&c_api_cstr_to_string(topic)),
+    );
     return 0;
 }
 
@@ -154,10 +153,11 @@ pub unsafe extern "C" fn fjage_unsubscribe(gw: *mut Gateway, topic: *const c_cha
 //bool fjage_is_subscribed(fjage_gw_t gw, const fjage_aid_t topic);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_is_subscribed(gw: *mut Gateway, topic: *const c_char) -> bool {
-    return runtime
-        .as_mut()
-        .unwrap()
-        .block_on(gw.as_mut().unwrap().is_subscribed(&cstr_to_String(topic)));
+    return RUNTIME.as_mut().unwrap().block_on(
+        gw.as_mut()
+            .unwrap()
+            .is_subscribed(&c_api_cstr_to_string(topic)),
+    );
 }
 
 //*// Find an agent providing a specified service. The AgentID returned by this function
@@ -176,7 +176,7 @@ pub unsafe extern "C" fn fjage_agent_for_service(
     let result = c_api_exec(
         gw.as_mut()
             .unwrap()
-            .agent_for_service(&cstr_to_String(service)),
+            .agent_for_service(&c_api_cstr_to_string(service)),
     );
     if result.is_none() {
         return std::ptr::null(); // C will recognize this as returning NULL (I hope)
@@ -206,20 +206,17 @@ pub unsafe extern "C" fn fjage_agents_for_service(
     let result = c_api_exec(
         gw.as_mut()
             .unwrap()
-            .agents_for_service(&cstr_to_String(service)),
+            .agents_for_service(&c_api_cstr_to_string(service)),
     );
     if result.is_empty() {
-        return 0; // C will recognize this as returning NULL (I hope)
+        return 0;
     }
-    //let result = result();
 
     for n in 0..std::cmp::min(max, result.len().try_into().unwrap()) {
         let str = result.get(n as usize).unwrap();
         if agents.is_null() {
             return result.len() as c_int;
         }
-
-        let c_str = CString::new(str.clone()).unwrap();
 
         let curr_aid_ptr = agents;
 
@@ -240,8 +237,8 @@ pub unsafe extern "C" fn fjage_agents_for_service(
 
 //int fjage_send(fjage_gw_t gw, const fjage_msg_t msg);
 #[no_mangle]
-pub unsafe extern "C" fn fjage_send(gw: *mut Gateway, msg: *mut GenericMessage) -> c_int {
-    GenericMessage::send(gw, msg); //auto-frees
+pub unsafe extern "C" fn fjage_send(gw: *mut Gateway, msg: *mut fjage_msg_t) -> c_int {
+    fjage_msg_t::send(gw, msg); //auto-frees
 
     return 0 as c_int;
 }
@@ -265,36 +262,31 @@ pub unsafe extern "C" fn fjage_send(gw: *mut Gateway, msg: *mut GenericMessage) 
 pub unsafe extern "C" fn fjage_receive(
     gw: *mut Gateway,
     clazz: *const c_char,
-    id: *const char,
+    id: *const c_char,
     timeout: c_long,
-) -> *const GenericMessage {
-    let rt = runtime.as_mut().unwrap();
-
-    let msg = if clazz.is_null() {
-        println!("IS NULL");
-        rt.block_on(async {
-            tokio::time::timeout(
-                Duration::from_millis(timeout as u64),
-                gw.as_mut().unwrap().recv(),
-            )
-            .await
-        })
-    } else {
-        rt.block_on(async {
-            tokio::time::timeout(
-                Duration::from_millis(timeout as u64),
-                gw.as_mut().unwrap().recv_any(vec![cstr_to_String(clazz)]),
-            )
-            .await
-        })
-    };
+) -> *const fjage_msg_t {
+    let msg = c_api_exec_timeout_ms(
+        gw.as_mut().unwrap().recv(
+            if clazz.is_null() {
+                None
+            } else {
+                Some(vec![c_api_cstr_to_string(clazz)])
+            },
+            if id.is_null() {
+                None
+            } else {
+                Some(c_api_cstr_to_string(id))
+            },
+        ),
+        timeout as i32,
+    );
 
     if msg.is_ok() {
         let msg = msg.unwrap();
         if msg.is_none() {
             return std::ptr::null();
         }
-        let boxed_msg = GenericMessage::alloc();
+        let boxed_msg = fjage_msg_t::alloc();
         boxed_msg.as_mut().unwrap().msg = msg.unwrap();
         return boxed_msg;
     } else {
@@ -324,30 +316,24 @@ pub unsafe extern "C" fn fjage_receive_any(
     gw: *mut Gateway,
     clazzes: *const *const c_char,
     clazzlen: c_int,
-    id: *const char,
     timeout: c_long,
-) -> *const GenericMessage {
-    let rt = runtime.as_mut().unwrap();
-
+) -> *const fjage_msg_t {
     let mut clazzlist: Vec<String> = Vec::new();
     for i in 0..clazzlen {
-        clazzlist.push(cstr_to_String(*clazzes.add(i as usize)));
+        clazzlist.push(c_api_cstr_to_string(*clazzes.add(i as usize)));
     }
 
-    let msg = rt.block_on(async {
-        tokio::time::timeout(
-            Duration::from_millis(timeout as u64),
-            gw.as_mut().unwrap().recv_any(clazzlist),
-        )
-        .await
-    });
+    let msg = c_api_exec_timeout_ms(
+        gw.as_mut().unwrap().recv(Some(clazzlist), None),
+        timeout as i32,
+    );
 
     if msg.is_ok() {
         let msg = msg.unwrap();
         if msg.is_none() {
             return std::ptr::null();
         }
-        let boxed_msg = GenericMessage::alloc();
+        let boxed_msg = fjage_msg_t::alloc();
         boxed_msg.as_mut().unwrap().msg = msg.unwrap();
         return boxed_msg;
     } else {
@@ -372,10 +358,10 @@ pub unsafe extern "C" fn fjage_receive_any(
 #[no_mangle]
 pub unsafe extern "C" fn fjage_request(
     gw: *mut Gateway,
-    request: *mut GenericMessage,
+    request: *mut fjage_msg_t,
     timeout: c_long,
-) -> *const GenericMessage {
-    return GenericMessage::request(gw, request, timeout);
+) -> *const fjage_msg_t {
+    return fjage_msg_t::request(gw, request, timeout);
 }
 
 //*// Abort a fjage_receive() or fjage_request() operation before the timeout. This function may be
@@ -387,7 +373,6 @@ pub unsafe extern "C" fn fjage_request(
 //int fjage_interrupt(fjage_gw_t gw);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_interrupt(gw: *mut Gateway) -> c_int {
-    //unimplemented!();
     gw.as_mut().unwrap().interrupt();
     return 0;
 }
@@ -401,7 +386,7 @@ pub unsafe extern "C" fn fjage_interrupt(gw: *mut Gateway) -> c_int {
 //fjage_aid_t fjage_aid_create(const char *name);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_aid_create(name: *const c_char) -> *const c_char {
-    return c_api_alloc_cstr(cstr_to_String(name));
+    return c_api_alloc_cstr(c_api_cstr_to_string(name));
 }
 
 //*// Create an topic. The topic AgentID created using this function should be freed using
@@ -414,7 +399,7 @@ pub unsafe extern "C" fn fjage_aid_create(name: *const c_char) -> *const c_char 
 #[no_mangle]
 pub unsafe extern "C" fn fjage_aid_topic(topic: *const c_char) -> *const c_char {
     let mut aid_topic = String::from("#");
-    aid_topic.push_str(&cstr_to_String(topic));
+    aid_topic.push_str(&c_api_cstr_to_string(topic));
     return c_api_alloc_cstr(aid_topic);
 }
 

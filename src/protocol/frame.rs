@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
-use uuid::Uuid;
 
 use crate::core::message::Message;
 
@@ -126,7 +124,7 @@ impl ResponseFrame {
             ResponseFrame::agentsForService { id, agentIDs: _ } => id,
         }
     }
-    pub fn get_agentID(&self) -> Option<String> {
+    pub fn get_agent_id(&self) -> Option<String> {
         match self {
             ResponseFrame::agents { id: _, agentIDs } => Some(agentIDs.first().unwrap().clone()),
             ResponseFrame::agentForService { id: _, agentID } => {
@@ -142,7 +140,7 @@ impl ResponseFrame {
             _ => None,
         }
     }
-    pub fn get_agentIDs(&self) -> Option<Vec<String>> {
+    pub fn get_agent_ids(&self) -> Option<Vec<String>> {
         match self {
             ResponseFrame::agents { id: _, agentIDs } => Some(agentIDs.clone()),
             ResponseFrame::agentForService { id: _, agentID } => {
