@@ -19,6 +19,13 @@ impl Message {
             data: Payload::new(),
         }
     }
+    pub fn new_generic(clazz: &str, performative: Performative, fields: Value) -> Message {
+        let mut msg = Message::new();
+        msg.clazz = clazz.to_string();
+        msg.data.perf = performative;
+        msg.data.fields = serde_json::from_value(fields).unwrap();
+        return msg;
+    }
     pub fn check_clazz_is(&self, clazzes: &Option<Vec<String>>) -> bool {
         if clazzes.is_some() {
             return clazzes.as_ref().is_some_and(|x| x.contains(&self.clazz));

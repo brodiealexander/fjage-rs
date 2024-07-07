@@ -3,6 +3,32 @@ name = "fjage_rs"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name="tx_datagram"
+path="src/demo/tx_datagram.rs"
+
+[[bin]]
+name="rx_datagram"
+path="src/demo/rx_datagram.rs"
+
+[[bin]]
+name="remote_shell"
+path="src/util/remote_shell.rs"
+
+
+[[bin]]
+name="remote_shell_exec"
+path="src/util/remote_shell_exec.rs"
+
+
+[[bin]]
+name="get_file"
+path="src/util/get_file.rs"
+
+[[bin]]
+name="put_file"
+path="src/util/put_file.rs"
+
 [lib]
 name="fjage_rs"
 path="src/lib.rs"

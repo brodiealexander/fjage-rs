@@ -11,7 +11,19 @@ A general description of what exists so far:
 - remote/gateway.rs: main implementation of the gateway. Resembles a container.
 - ffi/ : implementation of the C API compatibility layer
 
-# Getting Started / Running the fjåge C gateway tests
+# Getting Started 
+
+## Running the demos
+
+This package includes several demonstration programs:
+- get_file and put_file are programs that upload or download files to or from the remote fjåge node
+- remote_shell_exec allows the user to run a specified command on the remote fjåge node and view the output
+- remote_shell obtains an interactive shell on the remote fjåge node
+- rx_datagram and tx_datagram allow the reception and transmission of a string via UnetStack's DATAGRAM service. These serve as a demonstration of fjåge-rs's generic message capabilities.
+
+To run them, use `cargo run --bin <program> <hostname> <port> [program arguments...]`. For example: `cargo bin --bin remote_shell_exec localhost 5081 ps`.
+
+## Running the fjåge C test suite
 
 To run the fjåge C gateway tests:
 - run `cargo build` in the project root
