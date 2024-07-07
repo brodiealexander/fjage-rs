@@ -1,12 +1,11 @@
-//*// Get an integer parameter from an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @param defval         Default value, if value unavailable
-//*// @return               Parameter value, NULL
-
+/// Get an integer parameter from an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @param defval         Default value, if value unavailable
+/// @return               Parameter value, NULL
 use std::{
     cmp::min,
     ffi::{c_char, c_double, c_float, c_int, c_long},
@@ -53,15 +52,15 @@ pub unsafe extern "C" fn fjage_param_get_int(
     }
 }
 
-//*// Get a long parameter from an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @param defval         Default value, if value unavailable
-//*// @return               Parameter value
+/// Get a long parameter from an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @param defval         Default value, if value unavailable
+/// @return               Parameter value
 
 //long fjage_param_get_long(fjage_gw_t gw, fjage_aid_t aid, const char *param, int ndx, long defval);
 #[no_mangle]
@@ -87,15 +86,15 @@ pub unsafe extern "C" fn fjage_param_get_long(
     }
 }
 
-//*// Get a float parameter from an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @param defval         Default value, if value unavailable
-//*// @return               Parameter value
+/// Get a float parameter from an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @param defval         Default value, if value unavailable
+/// @return               Parameter value
 
 //float fjage_param_get_float(fjage_gw_t gw, fjage_aid_t aid, const char *param, int ndx, float defval);
 #[no_mangle]
@@ -145,15 +144,15 @@ pub unsafe extern "C" fn fjage_param_get_double(
     }
 }
 
-//*// Get a boolean parameter from an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @param defval         Default value, if value unavailable
-//*// @return               Parameter value
+/// Get a boolean parameter from an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @param defval         Default value, if value unavailable
+/// @return               Parameter value
 
 //bool fjage_param_get_bool(fjage_gw_t gw, fjage_aid_t aid, const char *param, int ndx, bool defval);
 #[no_mangle]
@@ -181,17 +180,17 @@ pub unsafe extern "C" fn fjage_param_get_bool(
     }
 }
 
-//*// Get a string parameter from an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response. The returned pointer should be freed by
-//*// the caller after use.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @param strval         Pointer to a string to receive data, or NULL
-//*// @param len            Size of the buffer, or 0 if strval is NULL
-//*// @return               Length of the string copied into the buffer, or length of the string returned by the agent if strval is NULL, or -1 on error.
+/// Get a string parameter from an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response. The returned pointer should be freed by
+/// the caller after use.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @param strval         Pointer to a string to receive data, or NULL
+/// @param len            Size of the buffer, or 0 if strval is NULL
+/// @return               Length of the string copied into the buffer, or length of the string returned by the agent if strval is NULL, or -1 on error.
 
 //int fjage_param_get_string(fjage_gw_t gw, fjage_aid_t aid, const char *param, int ndx, const char *strval, int len);
 #[no_mangle]
@@ -410,15 +409,15 @@ pub unsafe extern "C" fn fjage_param_get_string_array(
     return len as c_int;
 }
 
-//*// Set an integer parameter on an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param value          Value of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @return               0 on success, error code otherwise
+/// Set an integer parameter on an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param value          Value of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @return               0 on success, error code otherwise
 
 //int fjage_param_set_int(fjage_gw_t gw, fjage_aid_t aid, const char *param, int value, int ndx);
 #[no_mangle]
@@ -433,15 +432,15 @@ pub unsafe extern "C" fn fjage_param_set_int(
     return c_api_set_param(gw, aid, param, Value::from(value), ndx);
 }
 
-//*// Set a long parameter on an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param value          Value of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @return               0 on success, error code otherwise
+/// Set a long parameter on an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param value          Value of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @return               0 on success, error code otherwise
 
 //int fjage_param_set_long(fjage_gw_t gw, fjage_aid_t aid, const char *param, long value, int ndx);
 #[no_mangle]
@@ -456,15 +455,15 @@ pub unsafe extern "C" fn fjage_param_set_long(
     return c_api_set_param(gw, aid, param, Value::from(value), ndx);
 }
 
-//*// Set a float parameter on an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param value          Value of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @return               0 on success, error code otherwise
+/// Set a float parameter on an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param value          Value of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @return               0 on success, error code otherwise
 
 //int fjage_param_set_float(fjage_gw_t gw, fjage_aid_t aid, const char *param, float value, int ndx);
 #[no_mangle]
@@ -494,15 +493,15 @@ pub unsafe extern "C" fn fjage_param_set_double(
     return c_api_set_param(gw, aid, param, Value::from(value), ndx);
 }
 
-//*// Set a boolean parameter on an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param value          Value of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @return               0 on success, error code otherwise
+/// Set a boolean parameter on an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param value          Value of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @return               0 on success, error code otherwise
 
 //int fjage_param_set_bool(fjage_gw_t gw, fjage_aid_t aid, const char *param, bool value, int ndx);
 #[no_mangle]
@@ -517,15 +516,15 @@ pub unsafe extern "C" fn fjage_param_set_bool(
     return c_api_set_param(gw, aid, param, Value::from(value), ndx);
 }
 
-//*// Set a string parameter on an agent. This is a utility function that sends a ParameterReq to an
-//*// agent, and returns the value from the agent's response.
-//*//
-//*// @param gw             Gateway
-//*// @param aid            AgentID of the target agent
-//*// @param param          Name of the parameter
-//*// @param value          Value of the parameter
-//*// @param ndx            Index of the parameter (-1 for non-indexed parameters)
-//*// @return               0 on success, error code otherwise
+/// Set a string parameter on an agent. This is a utility function that sends a ParameterReq to an
+/// agent, and returns the value from the agent's response.
+///
+/// @param gw             Gateway
+/// @param aid            AgentID of the target agent
+/// @param param          Name of the parameter
+/// @param value          Value of the parameter
+/// @param ndx            Index of the parameter (-1 for non-indexed parameters)
+/// @return               0 on success, error code otherwise
 
 //int fjage_param_set_string(fjage_gw_t gw, fjage_aid_t aid, const char *param, const char *value, int ndx);
 #[no_mangle]

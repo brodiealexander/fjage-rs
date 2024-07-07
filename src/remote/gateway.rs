@@ -17,6 +17,7 @@ pub enum GatewayReceiveInterrupt {
     CANCEL,
 }
 
+/// Gateway used to interface with fjåge agents from Rust
 #[derive(Clone)]
 pub struct Gateway {
     sender: UnboundedSender<Frame>,
@@ -29,6 +30,7 @@ pub struct Gateway {
     msg_interrupt_sender: mpsc::Sender<GatewayReceiveInterrupt>,
 }
 impl Gateway {
+    /// Open a new TCP Gateway using a hostname and port.
     pub async fn new_tcp(hostname: &str, port: u16) -> Gateway {
         let conn = TcpConnector::new(hostname, port);
         return Gateway::new(&conn).await;
@@ -135,7 +137,7 @@ impl Gateway {
     pub fn get_agent_id(&self) -> String {
         return self.agent_id.clone();
     }
-
+    /// Get list of agents running in fjåge
     pub async fn agents(&mut self) -> Vec<String> {
         let id = Uuid::new_v4().to_string();
         let rsp = self
@@ -144,6 +146,7 @@ impl Gateway {
             .get_agent_ids();
         return rsp.unwrap();
     }
+    /// Get list of services running in fjåge
     pub async fn services(&mut self) -> Vec<String> {
         let rsp = self
             .query(Frame::Request(RequestFrame::services {
@@ -152,6 +155,7 @@ impl Gateway {
             .await;
         return rsp.get_services().unwrap();
     }
+    /// Ask if upstream container contains a specific agent
     pub async fn contains_agent(&mut self, agent_id: &str) -> bool {
         let rsp = self
             .query(Frame::Request(RequestFrame::containsAgent {
@@ -161,6 +165,7 @@ impl Gateway {
             .await;
         return rsp.get_contains_agent().unwrap();
     }
+    /// Find an agent which advertises the requested service
     pub async fn agent_for_service(&mut self, service: &str) -> Option<String> {
         let rsp = self
             .query(Frame::Request(RequestFrame::agentForService {
@@ -170,6 +175,7 @@ impl Gateway {
             .await;
         return rsp.get_agent_id();
     }
+    /// Find all agents which advertise the requested service
     pub async fn agents_for_service(&mut self, service: &str) -> Vec<String> {
         let rsp = self
             .query(Frame::Request(RequestFrame::agentsForService {
@@ -179,25 +185,12 @@ impl Gateway {
             .await;
         return rsp.get_agent_ids().unwrap();
     }
-    pub fn send_raw(&mut self, mut msg: Message) {
+
+    /// Send a message to the specified agent or topic. If "sender" is empty, it will be filled with the AgentID of the Gateway
+    pub fn send(&mut self, to: &str, mut msg: Message) {
         if msg.data.sender.is_empty() {
             msg.data.sender = self.agent_id.clone();
         }
-        msg.data.sentAt = Some(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_millis() as i64,
-        );
-        self.sender
-            .send(Frame::Request(RequestFrame::send {
-                message: msg,
-                relay: true,
-            }))
-            .unwrap();
-    }
-    pub fn send(&mut self, to: &str, mut msg: Message) {
-        msg.data.sender = self.agent_id.clone();
         msg.data.recipient = to.to_string();
         msg.data.sentAt = Some(
             SystemTime::now()
@@ -212,6 +205,7 @@ impl Gateway {
             }))
             .unwrap();
     }
+    /// Send a message to the specified agent, then waits for a message with an inReplyTo marker matching the sent message's UUID.
     pub async fn request(&mut self, to: &str, mut msg: Message) -> Option<Message> {
         let id = msg.data.msgID.clone();
         msg.data.sentAt = Some(
@@ -224,10 +218,11 @@ impl Gateway {
         self.send(to, msg);
         return self.recv(None, Some(id)).await;
     }
-
+    /// Clear any pending interrupts on the Gateway
     pub async fn clear_interrupt(&mut self) {
         while self.msg_interrupt_listener.lock().await.try_recv().is_ok() {}
     }
+    /// Receive a message. If clazzes, id, or both are specified, then only messages matching those parameters will be returned.
     pub async fn recv(
         &mut self,
         clazzes: Option<Vec<String>>,
@@ -266,13 +261,13 @@ impl Gateway {
             };
         }
     }
-
+    /// Interrupt an ongoing reception
     pub fn interrupt(&mut self) {
         self.msg_interrupt_sender
             .blocking_send(GatewayReceiveInterrupt::CANCEL)
             .unwrap();
     }
-    pub async fn process_request(&mut self, req: RequestFrame) -> Option<ResponseFrame> {
+    async fn process_request(&mut self, req: RequestFrame) -> Option<ResponseFrame> {
         return match req {
             RequestFrame::agents { id } => Some(ResponseFrame::agents {
                 id: id,
@@ -320,6 +315,7 @@ impl Gateway {
     }
 }
 impl ParameterManipulation for Gateway {
+    /// Send a [ParameterReq](https://org-arl.github.io/fjage/javadoc/org/arl/fjage/param/ParameterReq.html) message to an agent in the upstream container and return the [ParameterRsp]((https://org-arl.github.io/fjage/javadoc/org/arl/fjage/param/ParameterRsp.html)).
     async fn param_req(&mut self, aid: &str, mut req: ParameterReq) -> Option<ParameterRsp> {
         let rsp = self.request(aid, req.to_msg()).await;
         if rsp.is_none() {

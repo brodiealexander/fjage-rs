@@ -129,9 +129,12 @@ impl fjage_msg_t {
         let _msg: Box<fjage_msg_t> = Box::from_raw(msg);
     }
     pub unsafe fn send(gw: *mut Gateway, msg: *mut fjage_msg_t) {
-        gw.as_mut()
-            .unwrap()
-            .send_raw(msg.as_mut().unwrap().msg.clone());
+        gw.as_mut().unwrap().send(
+            fjage_msg_t::strkey_get(msg, "recipient")
+                .as_str()
+                .unwrap_or(""),
+            msg.as_mut().unwrap().msg.clone(),
+        );
         fjage_msg_t::free(msg);
     }
     pub unsafe fn request(

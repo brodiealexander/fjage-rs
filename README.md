@@ -18,3 +18,7 @@ To run the fjåge C gateway tests:
 - navigate to `tests/docker` and run `./launch-arm64.sh` or `./launch-amd64.sh`. 
 - once you see the fjåge shell prompt, type `run 'dummy'` to load the test fixture agent.
 - in another terminal, navigate to `/tests/fjage-c` and run `make fjage-rs-test`. Then run `./test_fjage` with a container running.
+
+# Viewing docs
+
+Run `cargo doc --open` to view documentation for this package in your browser. 
