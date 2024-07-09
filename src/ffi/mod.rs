@@ -18,8 +18,8 @@ pub unsafe extern "C" fn fjage_tcp_open(hostname: *const c_char, port: c_int) ->
     let hostname = String::from_utf8_lossy(hostname.to_bytes()).to_string();
     let port: i32 = i32::from(port);
     let gw = Box::new(Gateway::new_tcp(&hostname, port.try_into().unwrap()));
-    let val = Box::into_raw(gw);
-    return val;
+    let gw = Box::into_raw(gw);
+    return gw;
 }
 
 /// Open a gateway to a fjåge master container via RS232.
@@ -36,7 +36,12 @@ pub unsafe extern "C" fn fjage_rs232_open(
     baud: c_int,
     settings: *const c_char,
 ) -> *mut Gateway {
-    unimplemented!()
+    let gw = Box::new(Gateway::new_serial(
+        &c_api_cstr_to_string(devname),
+        baud as u32,
+    ));
+    let gw = Box::into_raw(gw);
+    return gw;
 }
 
 /// Wakeup a device running fjåge master container via RS232.
@@ -52,8 +57,10 @@ pub unsafe extern "C" fn fjage_rs232_wakeup(
     devname: *const c_char,
     baud: c_int,
     settings: *const c_char,
-) -> *mut Gateway {
-    unimplemented!();
+) -> c_int {
+    // unimplemented!();
+    // Maybe we make this assert "alive"?
+    return 0;
 }
 
 /// Close a gateway to a fjåge master container. Once a gateway is closed,

@@ -18,16 +18,31 @@ fn main() {
         println!("{}", HELP_STRING);
         return;
     }
-    let hostname: &str = args.get(1).unwrap();
-    let port: Result<u16, _> = args.get(2).unwrap().parse();
-    if port.is_err() {
-        println!("Port must be integer!");
-        println!("{}", HELP_STRING);
-    }
-    let port = port.unwrap();
 
-    // Connect to gateway
-    let mut gw = Gateway::new_tcp(hostname, port);
+    let mut gw = if args.get(1).unwrap() == "--rs232" {
+        let dev: &str = args.get(2).unwrap();
+        let baud: Result<u32, _> = args.get(3).unwrap().parse();
+        if baud.is_err() {
+            println!("Baud rate must be integer!");
+            println!("{}", HELP_STRING);
+        }
+        let baud = baud.unwrap();
+
+        // Connect to gateway
+        Gateway::new_serial(dev, baud)
+    } else {
+        let hostname: &str = args.get(1).unwrap();
+        let port: Result<u16, _> = args.get(2).unwrap().parse();
+        if port.is_err() {
+            println!("Port must be integer!");
+            println!("{}", HELP_STRING);
+        }
+        let port = port.unwrap();
+
+        // Connect to gateway
+        Gateway::new_tcp(hostname, port)
+    };
+
     // Find an agent advertising the SHELL service
     let shell = gw
         .agent_for_service("org.arl.fjage.shell.Services.SHELL")

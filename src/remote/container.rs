@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::message::Message;
 //use crate::core::param::{ParameterManipulation, ParameterReq, ParameterRsp};
-use crate::protocol::connector::TcpConnector;
+use crate::protocol::connector::{SerialPortConnector, TcpConnector};
 use crate::protocol::frame::Frame;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::sync::{broadcast, Mutex};
@@ -33,6 +33,10 @@ impl RemoteContainer {
     /// Open a new TCP Remote Container using a hostname and port.
     pub async fn new_tcp(hostname: &str, port: u16) -> RemoteContainer {
         let conn = TcpConnector::new(hostname, port);
+        return RemoteContainer::new(&conn).await;
+    }
+    pub async fn new_serial(dev: &str, baud: u32) -> RemoteContainer {
+        let conn = SerialPortConnector::new(dev, baud);
         return RemoteContainer::new(&conn).await;
     }
     pub async fn new<T: Connector>(connector: &T) -> RemoteContainer {

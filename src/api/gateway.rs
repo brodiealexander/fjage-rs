@@ -22,6 +22,14 @@ impl Gateway {
             runtime: Arc::new(runtime),
         };
     }
+    pub fn new_serial(dev: &str, baud: u32) -> Gateway {
+        let runtime = Box::new(Runtime::new().unwrap());
+        let gw = runtime.block_on(RemoteContainer::new_serial(dev, baud));
+        return Gateway {
+            container: gw,
+            runtime: Arc::new(runtime),
+        };
+    }
     pub fn is_subscribed(&self, aid: &str) -> bool {
         return self.runtime.block_on(self.container.is_subscribed(aid));
     }
