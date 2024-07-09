@@ -14,9 +14,9 @@ use std::{
 
 use serde_json::Value;
 
-use crate::{core::param::ParameterManipulation, remote::gateway::Gateway};
+use crate::{api::gateway::Gateway, core::param::ParameterManipulation};
 
-use super::util::{c_api_alloc_cstr, c_api_cstr_to_string, c_api_exec_timeout_ms, c_api_set_param};
+use super::util::{c_api_alloc_cstr, c_api_cstr_to_string, c_api_set_param};
 
 //int fjage_param_get_int(fjage_gw_t gw, fjage_aid_t aid, const char *param, int ndx, int defval);
 #[no_mangle]
@@ -37,19 +37,12 @@ pub unsafe extern "C" fn fjage_param_get_int(
     } else {
         return val.as_i64().unwrap() as c_int;
     }*/
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_int(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_int(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_ok() {
-        return val.unwrap().unwrap_or(defval);
-    } else {
-        return defval;
-    }
+    return val.unwrap_or(defval);
 }
 
 /// Get a long parameter from an agent. This is a utility function that sends a ParameterReq to an
@@ -71,19 +64,12 @@ pub unsafe extern "C" fn fjage_param_get_long(
     ndx: c_int,
     defval: c_long,
 ) -> c_long {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_long(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_long(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_ok() {
-        return val.unwrap().unwrap_or(defval);
-    } else {
-        return defval;
-    }
+    return val.unwrap_or(defval);
 }
 
 /// Get a float parameter from an agent. This is a utility function that sends a ParameterReq to an
@@ -105,19 +91,12 @@ pub unsafe extern "C" fn fjage_param_get_float(
     ndx: c_int,
     defval: c_float,
 ) -> c_float {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_float(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_float(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_ok() {
-        return val.unwrap().unwrap_or(defval);
-    } else {
-        return defval;
-    }
+    return val.unwrap_or(defval);
 }
 
 //double fjage_param_get_double(fjage_gw_t gw, fjage_aid_t aid, const char *param, int ndx, double defval);
@@ -129,19 +108,12 @@ pub unsafe extern "C" fn fjage_param_get_double(
     ndx: c_int,
     defval: c_double,
 ) -> c_double {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_double(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_double(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_ok() {
-        return val.unwrap().unwrap_or(defval);
-    } else {
-        return defval;
-    }
+    return val.unwrap_or(defval);
 }
 
 /// Get a boolean parameter from an agent. This is a utility function that sends a ParameterReq to an
@@ -165,19 +137,12 @@ pub unsafe extern "C" fn fjage_param_get_bool(
 ) -> bool {
     // Rust does not let us treat integers as booleans
     let defval = defval == 1;
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_bool(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_bool(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_ok() {
-        return val.unwrap().unwrap_or(defval);
-    } else {
-        return defval;
-    }
+    return val.unwrap_or(defval);
 }
 
 /// Get a string parameter from an agent. This is a utility function that sends a ParameterReq to an
@@ -202,18 +167,12 @@ pub unsafe extern "C" fn fjage_param_get_string(
     strval: *mut c_char,
     len: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_string(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_string(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return -1;
     }
@@ -240,18 +199,12 @@ pub unsafe extern "C" fn fjage_param_get_int_array(
     maxlen: c_int,
     ndx: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_int_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_int_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return -1;
     }
@@ -272,18 +225,12 @@ pub unsafe extern "C" fn fjage_param_get_long_array(
     maxlen: c_int,
     ndx: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_long_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_long_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return -1;
     }
@@ -304,18 +251,12 @@ pub unsafe extern "C" fn fjage_param_get_float_array(
     maxlen: c_int,
     ndx: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_float_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_float_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return -1;
     }
@@ -336,18 +277,12 @@ pub unsafe extern "C" fn fjage_param_get_double_array(
     maxlen: c_int,
     ndx: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_double_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_double_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return -1;
     }
@@ -369,18 +304,12 @@ pub unsafe extern "C" fn fjage_param_get_string_array(
     maxlen: c_int,
     ndx: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_string_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().get_string_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return -1;
     }
@@ -576,19 +505,13 @@ pub unsafe extern "C" fn fjage_param_set_int_array(
     len: c_int,
     ndx: c_int,
 ) -> c_int {
-    let result = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().set_int_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            Vec::from(slice::from_raw_parts(value, len as usize)),
-            ndx as i64,
-        ),
-        1000,
+    let result = gw.as_mut().unwrap().set_int_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        Vec::from(slice::from_raw_parts(value, len as usize)),
+        ndx as i64,
     );
-    if result.is_err() {
-        return -1;
-    }
-    let result = result.unwrap();
+
     if result.is_ok() {
         return 0;
     } else {
@@ -607,19 +530,13 @@ pub unsafe extern "C" fn fjage_param_set_long_array(
     len: c_int,
     ndx: c_int,
 ) -> c_int {
-    let result = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().set_long_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            Vec::from(slice::from_raw_parts(value, len as usize)),
-            ndx as i64,
-        ),
-        1000,
+    let result = gw.as_mut().unwrap().set_long_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        Vec::from(slice::from_raw_parts(value, len as usize)),
+        ndx as i64,
     );
-    if result.is_err() {
-        return -1;
-    }
-    let result = result.unwrap();
+
     if result.is_ok() {
         return 0;
     } else {
@@ -638,19 +555,13 @@ pub unsafe extern "C" fn fjage_param_set_float_array(
     len: c_int,
     ndx: c_int,
 ) -> c_int {
-    let result = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().set_float_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            Vec::from(slice::from_raw_parts(value, len as usize)),
-            ndx as i64,
-        ),
-        1000,
+    let result = gw.as_mut().unwrap().set_float_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        Vec::from(slice::from_raw_parts(value, len as usize)),
+        ndx as i64,
     );
-    if result.is_err() {
-        return -1;
-    }
-    let result = result.unwrap();
+
     if result.is_ok() {
         return 0;
     } else {
@@ -670,19 +581,13 @@ pub unsafe extern "C" fn fjage_param_set_double_array(
     ndx: c_int,
 ) -> c_int {
     //unimplemented!();
-    let result = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().set_double_array(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            Vec::from(slice::from_raw_parts(value, len as usize)),
-            ndx as i64,
-        ),
-        1000,
+    let result = gw.as_mut().unwrap().set_double_array(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        Vec::from(slice::from_raw_parts(value, len as usize)),
+        ndx as i64,
     );
-    if result.is_err() {
-        return -1;
-    }
-    let result = result.unwrap();
+
     if result.is_ok() {
         return 0;
     } else {

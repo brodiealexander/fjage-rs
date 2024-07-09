@@ -1,18 +1,16 @@
 use std::{
     ffi::{c_char, c_int, c_long, CStr, CString},
-    future::Future,
     time::Duration,
 };
 
 use serde_json::Value;
-use tokio::time::error::Elapsed;
 
 use crate::{
+    api::gateway::Gateway,
     core::{
         message::{Message, Performative},
         param::ParameterManipulation,
     },
-    remote::gateway::Gateway,
 };
 
 #[macro_export]
@@ -142,29 +140,20 @@ impl fjage_msg_t {
         msg: *mut fjage_msg_t,
         timeout: c_long,
     ) -> *const fjage_msg_t {
-        let rt = super::RUNTIME.as_mut().unwrap();
         let req = msg.as_mut().unwrap().msg.clone();
-        let rsp = rt.block_on(async {
-            tokio::time::timeout(
-                Duration::from_millis(timeout as u64),
-                gw.as_mut()
-                    .unwrap()
-                    .request(&req.data.recipient, req.clone()),
-            )
-            .await
-        });
+        let rsp = gw.as_mut().unwrap().request_timeout(
+            &req.data.recipient,
+            req.clone(),
+            Duration::from_millis(timeout as u64),
+        );
         fjage_msg_t::free(msg);
-        if rsp.is_ok() {
-            let rsp = rsp.unwrap();
-            if rsp.is_none() {
-                return std::ptr::null();
-            }
-            let boxed_msg = fjage_msg_t::alloc();
-            boxed_msg.as_mut().unwrap().msg = rsp.unwrap();
-            return boxed_msg;
-        } else {
+
+        if rsp.is_none() {
             return std::ptr::null();
         }
+        let boxed_msg = fjage_msg_t::alloc();
+        boxed_msg.as_mut().unwrap().msg = rsp.unwrap();
+        return boxed_msg;
     }
     pub unsafe fn set(msg: *mut fjage_msg_t, key: *const c_char, value: Value) {
         let msg = msg.as_mut().unwrap();
@@ -254,19 +243,13 @@ pub unsafe fn c_api_set_param(
     value: Value,
     ndx: c_int,
 ) -> c_int {
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().set_param(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            value.clone(),
-            ndx as i64,
-        ),
-        1000,
+    let val = gw.as_mut().unwrap().set_param(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        value.clone(),
+        ndx as i64,
     );
-    if val.is_err() {
-        return -1;
-    }
-    let val = val.unwrap();
+
     if val.is_ok() {
         return 0;
     } else {
@@ -283,27 +266,22 @@ pub unsafe fn c_api_get_param(
     //let val = rt.block_on(async {
     //    tokio::time::timeout(
     //        Duration::from_millis(1000),
-    let val = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().get_param(
-            &c_api_cstr_to_string(aid),
-            &c_api_cstr_to_string(param),
-            ndx as i64,
-        ),
-        1000 as c_int,
+    let val = gw.as_mut().unwrap().get_param(
+        &c_api_cstr_to_string(aid),
+        &c_api_cstr_to_string(param),
+        ndx as i64,
     );
     //    )
     //    .await
     //});
-    if val.is_err() {
-        return Value::Null;
-    }
-    let val = val.unwrap();
+
     if val.is_none() {
         return Value::Null;
     }
     return val.unwrap();
 }
 
+/*
 pub unsafe fn c_api_exec_timeout_ms<F: Future>(
     future: F,
     _timeout: c_int,
@@ -315,4 +293,4 @@ pub unsafe fn c_api_exec_timeout_ms<F: Future>(
 pub unsafe fn c_api_exec<F: Future>(future: F) -> <F as std::future::Future>::Output {
     let rt = super::RUNTIME.as_mut().unwrap();
     return rt.block_on(async { future.await });
-}
+}*/

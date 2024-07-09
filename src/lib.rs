@@ -1,3 +1,4 @@
+pub mod api;
 pub mod core;
 pub mod ffi;
 pub mod protocol;

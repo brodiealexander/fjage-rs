@@ -1,11 +1,9 @@
-use std::{env, io::Write};
-
-use fjage_rs::{
-    core::message::{Message, Performative},
-    remote::{gateway::Gateway, shell::ShellExecReq},
+use std::{
+    env,
+    io::{self, BufRead, BufReader, Write},
 };
-use serde_json::Value;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+use fjage_rs::{api::gateway::Gateway, core::message::Performative, remote::shell::ShellExecReq};
 
 // Interactive remote shell
 
@@ -13,8 +11,7 @@ static HELP_STRING: &str = r##"
 Usage: remote_shell <hostname> <port>
 "##;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let args: Vec<String> = env::args().collect();
     // Validate arguments
     if args.len() < 2 {
@@ -30,18 +27,17 @@ async fn main() {
     let port = port.unwrap();
 
     // Connect to gateway
-    let mut gw = Gateway::new_tcp(hostname, port).await;
+    let mut gw = Gateway::new_tcp(hostname, port);
     // Find an agent advertising the SHELL service
     let shell = gw
         .agent_for_service("org.arl.fjage.shell.Services.SHELL")
-        .await
         .unwrap();
 
     // Subscribe to the shell agent
 
-    gw.subscribe_agent(&shell).await;
+    gw.subscribe_agent(&shell);
 
-    let mut reader = tokio::io::BufReader::new(tokio::io::stdin());
+    let mut reader = BufReader::new(io::stdin());
 
     loop {
         let mut cmd = String::new();
@@ -50,10 +46,10 @@ async fn main() {
         print!("> ");
         std::io::stdout().flush().unwrap();
 
-        reader.read_line(&mut cmd).await.unwrap();
+        reader.read_line(&mut cmd).unwrap();
 
         let mut msg = ShellExecReq::new(&cmd);
-        let rsp = gw.request(&shell, msg.to_msg()).await.unwrap();
+        let rsp = gw.request(&shell, msg.to_msg()).unwrap();
 
         if match rsp.data.perf {
             Performative::AGREE => true,

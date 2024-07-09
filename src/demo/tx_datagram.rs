@@ -1,17 +1,10 @@
 use std::env;
 
 use fjage_rs::{
+    api::gateway::Gateway,
     core::message::{Message, Performative},
-    remote::{
-        file::{GetFileReq, GetFileRsp},
-        gateway::Gateway,
-    },
 };
-use serde_json::{json, Value};
-use tokio::{
-    fs::{self, File, OpenOptions},
-    io::AsyncWriteExt,
-};
+use serde_json::json;
 
 static HELP_STRING: &str = r##"
 Usage: tx_datagram <hostname> <port> <remote node> <message>
@@ -38,12 +31,11 @@ async fn main() {
     let data = args.get(4).unwrap();
 
     // Connect to gateway
-    let mut gw = Gateway::new_tcp(hostname, port).await;
+    let mut gw = Gateway::new_tcp(hostname, port);
 
     // Find an agent advertising the DATAGRAM service
     let dsp = gw
         .agent_for_service("org.arl.unet.Services.DATAGRAM")
-        .await
         .unwrap();
 
     // Demonstration of the power of generic messages
@@ -54,7 +46,7 @@ async fn main() {
     );
 
     // Send message to the datagram service provider
-    let rsp = gw.request(&dsp, datagram).await;
+    let rsp = gw.request(&dsp, datagram);
     let rsp = rsp.unwrap();
     if match rsp.data.perf {
         Performative::AGREE => true,

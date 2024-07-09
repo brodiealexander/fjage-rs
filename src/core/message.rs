@@ -5,6 +5,18 @@ use uuid::Uuid;
 
 use crate::protocol::base64::*;
 
+#[macro_export]
+macro_rules! msg_standard_fields {
+    () => {
+        pub msgID: String,
+        pub perf: Performative,
+        pub recipient: String,
+        pub inReplyTo: Option<String>,
+        pub sender: String,
+        pub sentAt: Option<i64>,
+    };
+}
+
 #[allow(non_camel_case_types, non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 
@@ -114,7 +126,6 @@ pub struct Payload {
     pub recipient: String,
     pub inReplyTo: Option<String>,
     pub sender: String,
-    //#[serde(default)]
     pub sentAt: Option<i64>,
     #[serde(flatten)]
     pub fields: HashMap<String, Value>,

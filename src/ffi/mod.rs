@@ -1,33 +1,23 @@
-use std::ffi::{c_char, c_int, c_long, CStr, CString};
-use tokio::runtime::Runtime;
-
-use util::{
-    c_api_alloc_cstr, c_api_cstr_to_string, c_api_exec, c_api_exec_timeout_ms, c_api_free_cstr,
-    fjage_msg_t,
+use std::{
+    ffi::{c_char, c_int, c_long, CStr},
+    time::Duration,
 };
 
-use crate::remote::gateway::Gateway;
+use util::{c_api_alloc_cstr, c_api_cstr_to_string, c_api_free_cstr, fjage_msg_t};
+
+use crate::api::gateway::Gateway;
 
 pub mod message;
 pub mod param;
 pub mod util;
 
-pub static mut RUNTIME: Option<Runtime> = None;
-
 //fjage_gw_t fjage_tcp_open(const char *hostname, int port);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_tcp_open(hostname: *const c_char, port: c_int) -> *mut Gateway {
-    RUNTIME = Some(Runtime::new().unwrap());
-
     let hostname = CStr::from_ptr(hostname);
     let hostname = String::from_utf8_lossy(hostname.to_bytes()).to_string();
     let port: i32 = i32::from(port);
-    let gw = Box::new(
-        RUNTIME
-            .as_mut()
-            .unwrap()
-            .block_on(async { Gateway::new_tcp(&hostname, port.try_into().unwrap()).await }),
-    );
+    let gw = Box::new(Gateway::new_tcp(&hostname, port.try_into().unwrap()));
     let val = Box::into_raw(gw);
     return val;
 }
@@ -103,10 +93,7 @@ pub unsafe extern "C" fn fjage_get_agent_id(gw: *mut Gateway) -> *const c_char {
 //int fjage_subscribe(fjage_gw_t gw, const fjage_aid_t topic);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_subscribe(gw: *mut Gateway, topic: *const c_char) -> c_int {
-    RUNTIME
-        .as_mut()
-        .unwrap()
-        .block_on(gw.as_mut().unwrap().subscribe(&c_api_cstr_to_string(topic)));
+    gw.as_mut().unwrap().subscribe(&c_api_cstr_to_string(topic));
     return 0;
 }
 
@@ -119,11 +106,9 @@ pub unsafe extern "C" fn fjage_subscribe(gw: *mut Gateway, topic: *const c_char)
 //int fjage_subscribe_agent(fjage_gw_t gw, const fjage_aid_t aid);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_subscribe_agent(gw: *mut Gateway, aid: *const c_char) -> c_int {
-    RUNTIME.as_mut().unwrap().block_on(
-        gw.as_mut()
-            .unwrap()
-            .subscribe_agent(&c_api_cstr_to_string(aid)),
-    );
+    gw.as_mut()
+        .unwrap()
+        .subscribe_agent(&c_api_cstr_to_string(aid));
     return 0;
 }
 
@@ -136,11 +121,9 @@ pub unsafe extern "C" fn fjage_subscribe_agent(gw: *mut Gateway, aid: *const c_c
 //int fjage_unsubscribe(fjage_gw_t gw, const fjage_aid_t topic);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_unsubscribe(gw: *mut Gateway, topic: *const c_char) -> c_int {
-    RUNTIME.as_mut().unwrap().block_on(
-        gw.as_mut()
-            .unwrap()
-            .unsubscribe(&c_api_cstr_to_string(topic)),
-    );
+    gw.as_mut()
+        .unwrap()
+        .unsubscribe(&c_api_cstr_to_string(topic));
     return 0;
 }
 
@@ -153,11 +136,10 @@ pub unsafe extern "C" fn fjage_unsubscribe(gw: *mut Gateway, topic: *const c_cha
 //bool fjage_is_subscribed(fjage_gw_t gw, const fjage_aid_t topic);
 #[no_mangle]
 pub unsafe extern "C" fn fjage_is_subscribed(gw: *mut Gateway, topic: *const c_char) -> bool {
-    return RUNTIME.as_mut().unwrap().block_on(
-        gw.as_mut()
-            .unwrap()
-            .is_subscribed(&c_api_cstr_to_string(topic)),
-    );
+    return gw
+        .as_mut()
+        .unwrap()
+        .is_subscribed(&c_api_cstr_to_string(topic));
 }
 
 /// Find an agent providing a specified service. The AgentID returned by this function
@@ -173,11 +155,10 @@ pub unsafe extern "C" fn fjage_agent_for_service(
     gw: *mut Gateway,
     service: *const c_char,
 ) -> *const c_char {
-    let result = c_api_exec(
-        gw.as_mut()
-            .unwrap()
-            .agent_for_service(&c_api_cstr_to_string(service)),
-    );
+    let result = gw
+        .as_mut()
+        .unwrap()
+        .agent_for_service(&c_api_cstr_to_string(service));
     if result.is_none() {
         return std::ptr::null(); // C will recognize this as returning NULL (I hope)
     }
@@ -203,11 +184,10 @@ pub unsafe extern "C" fn fjage_agents_for_service(
     agents: *mut *mut c_char,
     max: c_int,
 ) -> c_int {
-    let result = c_api_exec(
-        gw.as_mut()
-            .unwrap()
-            .agents_for_service(&c_api_cstr_to_string(service)),
-    );
+    let result = gw
+        .as_mut()
+        .unwrap()
+        .agents_for_service(&c_api_cstr_to_string(service));
     if result.is_empty() {
         return 0;
     }
@@ -265,33 +245,26 @@ pub unsafe extern "C" fn fjage_receive(
     id: *const c_char,
     timeout: c_long,
 ) -> *const fjage_msg_t {
-    let msg = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().recv(
-            if clazz.is_null() {
-                None
-            } else {
-                Some(vec![c_api_cstr_to_string(clazz)])
-            },
-            if id.is_null() {
-                None
-            } else {
-                Some(c_api_cstr_to_string(id))
-            },
-        ),
-        timeout as i32,
+    let msg = gw.as_mut().unwrap().recv_timeout(
+        if clazz.is_null() {
+            None
+        } else {
+            Some(vec![c_api_cstr_to_string(clazz)])
+        },
+        if id.is_null() {
+            None
+        } else {
+            Some(c_api_cstr_to_string(id))
+        },
+        Duration::from_millis(timeout as u64),
     );
 
-    if msg.is_ok() {
-        let msg = msg.unwrap();
-        if msg.is_none() {
-            return std::ptr::null();
-        }
-        let boxed_msg = fjage_msg_t::alloc();
-        boxed_msg.as_mut().unwrap().msg = msg.unwrap();
-        return boxed_msg;
-    } else {
+    if msg.is_none() {
         return std::ptr::null();
     }
+    let boxed_msg = fjage_msg_t::alloc();
+    boxed_msg.as_mut().unwrap().msg = msg.unwrap();
+    return boxed_msg;
 }
 
 /// Receive any message whose name is contained in the array 'clazzes'. The first message whose name
@@ -323,22 +296,18 @@ pub unsafe extern "C" fn fjage_receive_any(
         clazzlist.push(c_api_cstr_to_string(*clazzes.add(i as usize)));
     }
 
-    let msg = c_api_exec_timeout_ms(
-        gw.as_mut().unwrap().recv(Some(clazzlist), None),
-        timeout as i32,
+    let msg = gw.as_mut().unwrap().recv_timeout(
+        Some(clazzlist),
+        None,
+        Duration::from_millis(timeout as u64),
     );
 
-    if msg.is_ok() {
-        let msg = msg.unwrap();
-        if msg.is_none() {
-            return std::ptr::null();
-        }
-        let boxed_msg = fjage_msg_t::alloc();
-        boxed_msg.as_mut().unwrap().msg = msg.unwrap();
-        return boxed_msg;
-    } else {
+    if msg.is_none() {
         return std::ptr::null();
     }
+    let boxed_msg = fjage_msg_t::alloc();
+    boxed_msg.as_mut().unwrap().msg = msg.unwrap();
+    return boxed_msg;
 }
 
 /// Send a message and wait for a response. The message object passed in is considered consumed

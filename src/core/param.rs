@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -123,25 +123,37 @@ impl ParameterRsp {
 }
 
 pub trait ParameterManipulation {
-    async fn param_req(&mut self, aid: &str, req: ParameterReq) -> Option<ParameterRsp>;
-    async fn get_param(&mut self, aid: &str, param: &str, index: i64) -> Option<Value> {
-        let value = self.param_req(aid, ParameterReq::get(param, index)).await;
+    fn param_req(&mut self, aid: &str, req: ParameterReq) -> Option<ParameterRsp>;
+    fn param_req_timeout(
+        &mut self,
+        aid: &str,
+        req: ParameterReq,
+        timeout: Duration,
+    ) -> Option<ParameterRsp>;
+    fn get_param(&mut self, aid: &str, param: &str, index: i64) -> Option<Value> {
+        let value = self.param_req_timeout(
+            aid,
+            ParameterReq::get(param, index),
+            Duration::from_millis(1000),
+        );
         if value.is_none() {
             return None;
         } else {
             return Some(value.unwrap().value);
         }
     }
-    async fn set_param(
+    fn set_param(
         &mut self,
         aid: &str,
         param: &str,
         value: Value,
         index: i64,
     ) -> Result<Value, i32> {
-        let rsp = self
-            .param_req(aid, ParameterReq::set(param, value.clone(), index))
-            .await;
+        let rsp = self.param_req_timeout(
+            aid,
+            ParameterReq::set(param, value.clone(), index),
+            Duration::from_millis(1000),
+        );
         if rsp.is_none() {
             return Err(-1);
         }
@@ -157,9 +169,9 @@ pub trait ParameterManipulation {
         }
     }
     //
-    async fn get_bool(&mut self, aid: &str, param: &str, index: i64) -> Option<bool> {
+    fn get_bool(&mut self, aid: &str, param: &str, index: i64) -> Option<bool> {
         let req = ParameterReq::get(param, index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return None;
         }
@@ -168,41 +180,41 @@ pub trait ParameterManipulation {
         return rsp.as_bool();
     }
     // NOTE: serde_json interprets all numerical values as either long or double. The get_int and get_float methods are only here for convenience.
-    async fn get_int(&mut self, aid: &str, param: &str, index: i64) -> Option<i32> {
-        let rsp = self.get_long(aid, param, index).await;
+    fn get_int(&mut self, aid: &str, param: &str, index: i64) -> Option<i32> {
+        let rsp = self.get_long(aid, param, index);
         if rsp.is_none() {
             return None;
         }
         return Some(rsp.unwrap() as i32);
     }
-    async fn get_long(&mut self, aid: &str, param: &str, index: i64) -> Option<i64> {
+    fn get_long(&mut self, aid: &str, param: &str, index: i64) -> Option<i64> {
         let req = ParameterReq::get(param, index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return None;
         }
         let rsp = rsp.unwrap().value;
         return rsp.as_i64();
     }
-    async fn get_float(&mut self, aid: &str, param: &str, index: i64) -> Option<f32> {
-        let rsp = self.get_double(aid, param, index).await;
+    fn get_float(&mut self, aid: &str, param: &str, index: i64) -> Option<f32> {
+        let rsp = self.get_double(aid, param, index);
         if rsp.is_none() {
             return None;
         }
         return Some(rsp.unwrap() as f32);
     }
-    async fn get_double(&mut self, aid: &str, param: &str, index: i64) -> Option<f64> {
+    fn get_double(&mut self, aid: &str, param: &str, index: i64) -> Option<f64> {
         let req = ParameterReq::get(param, index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return None;
         }
         let rsp = rsp.unwrap().value;
         return rsp.as_f64();
     }
-    async fn get_string(&mut self, aid: &str, param: &str, index: i64) -> Option<String> {
+    fn get_string(&mut self, aid: &str, param: &str, index: i64) -> Option<String> {
         let req = ParameterReq::get(param, index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return None;
         }
@@ -214,15 +226,9 @@ pub trait ParameterManipulation {
     }
 
     //
-    async fn set_bool(
-        &mut self,
-        aid: &str,
-        param: &str,
-        value: bool,
-        index: i64,
-    ) -> Result<bool, i32> {
+    fn set_bool(&mut self, aid: &str, param: &str, value: bool, index: i64) -> Result<bool, i32> {
         let req = ParameterReq::set(param, Value::from(value), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1);
         }
@@ -237,29 +243,17 @@ pub trait ParameterManipulation {
             return Err(-1);
         }
     }
-    async fn set_int(
-        &mut self,
-        aid: &str,
-        param: &str,
-        value: i32,
-        index: i64,
-    ) -> Result<i32, i32> {
-        let rsp = self.set_long(aid, param, value as i64, index).await;
+    fn set_int(&mut self, aid: &str, param: &str, value: i32, index: i64) -> Result<i32, i32> {
+        let rsp = self.set_long(aid, param, value as i64, index);
         if rsp.is_ok() {
             return Ok(rsp.unwrap() as i32);
         } else {
             return Err(rsp.unwrap_err());
         }
     }
-    async fn set_long(
-        &mut self,
-        aid: &str,
-        param: &str,
-        value: i64,
-        index: i64,
-    ) -> Result<i64, i32> {
+    fn set_long(&mut self, aid: &str, param: &str, value: i64, index: i64) -> Result<i64, i32> {
         let req = ParameterReq::set(param, Value::from(value), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1);
         }
@@ -274,29 +268,17 @@ pub trait ParameterManipulation {
             return Err(-1);
         }
     }
-    async fn set_float(
-        &mut self,
-        aid: &str,
-        param: &str,
-        value: f32,
-        index: i64,
-    ) -> Result<f32, i32> {
-        let rsp = self.set_double(aid, param, value as f64, index).await;
+    fn set_float(&mut self, aid: &str, param: &str, value: f32, index: i64) -> Result<f32, i32> {
+        let rsp = self.set_double(aid, param, value as f64, index);
         if rsp.is_ok() {
             return Ok(rsp.unwrap() as f32);
         } else {
             return Err(rsp.unwrap_err());
         }
     }
-    async fn set_double(
-        &mut self,
-        aid: &str,
-        param: &str,
-        value: f64,
-        index: i64,
-    ) -> Result<f64, i32> {
+    fn set_double(&mut self, aid: &str, param: &str, value: f64, index: i64) -> Result<f64, i32> {
         let req = ParameterReq::set(param, Value::from(value), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1);
         }
@@ -311,7 +293,7 @@ pub trait ParameterManipulation {
             return Err(-1);
         }
     }
-    async fn set_string(
+    fn set_string(
         &mut self,
         aid: &str,
         param: &str,
@@ -319,7 +301,7 @@ pub trait ParameterManipulation {
         index: i64,
     ) -> Result<String, i32> {
         let req = ParameterReq::set(param, Value::from(value), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1);
         }
@@ -336,17 +318,17 @@ pub trait ParameterManipulation {
     }
 
     // array getters
-    async fn get_int_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<i32>> {
-        let rsp = self.get_long_array(aid, param, index).await;
+    fn get_int_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<i32>> {
+        let rsp = self.get_long_array(aid, param, index);
         if rsp.is_none() {
             return None;
         }
         let rsp: Vec<i32> = rsp.unwrap().iter().map(|v| *v as i32).collect();
         return Some(rsp);
     }
-    async fn get_long_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<i64>> {
+    fn get_long_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<i64>> {
         let req = ParameterReq::get(param, index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return None;
         }
@@ -364,9 +346,9 @@ pub trait ParameterManipulation {
         let rsp: Vec<i64> = rsp.iter().map(|v| v.as_i64().unwrap_or(0)).collect();
         return Some(rsp);
     }
-    async fn get_float_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<f32>> {
+    fn get_float_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<f32>> {
         {
-            let rsp = self.get_double_array(aid, param, index).await;
+            let rsp = self.get_double_array(aid, param, index);
             if rsp.is_none() {
                 return None;
             }
@@ -374,9 +356,9 @@ pub trait ParameterManipulation {
             return Some(rsp);
         }
     }
-    async fn get_double_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<f64>> {
+    fn get_double_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<f64>> {
         let req = ParameterReq::get(param, index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return None;
         }
@@ -394,15 +376,10 @@ pub trait ParameterManipulation {
         let rsp: Vec<f64> = rsp.iter().map(|v| v.as_f64().unwrap_or(0.0)).collect();
         return Some(rsp);
     }
-    async fn get_string_array(
-        &mut self,
-        aid: &str,
-        param: &str,
-        index: i64,
-    ) -> Option<Vec<String>> {
+    fn get_string_array(&mut self, aid: &str, param: &str, index: i64) -> Option<Vec<String>> {
         {
             let req = ParameterReq::get(param, index);
-            let rsp = self.param_req(aid, req).await;
+            let rsp = self.param_req(aid, req);
             if rsp.is_none() {
                 return None;
             }
@@ -425,7 +402,7 @@ pub trait ParameterManipulation {
         }
     }
     // array setters
-    async fn set_int_array(
+    fn set_int_array(
         &mut self,
         aid: &str,
         param: &str,
@@ -433,7 +410,7 @@ pub trait ParameterManipulation {
         index: i64,
     ) -> Result<usize, i32> {
         let req = ParameterReq::set(param, b64_obj_from_i32(value.clone()), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
         }
@@ -459,7 +436,7 @@ pub trait ParameterManipulation {
             return Err(-1); // Fails equality check
         }
     }
-    async fn set_long_array(
+    fn set_long_array(
         &mut self,
         aid: &str,
         param: &str,
@@ -467,7 +444,7 @@ pub trait ParameterManipulation {
         index: i64,
     ) -> Result<usize, i32> {
         let req = ParameterReq::set(param, b64_obj_from_i64(value.clone()), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
         }
@@ -493,7 +470,7 @@ pub trait ParameterManipulation {
             return Err(-1); // Fails equality check
         }
     }
-    async fn set_float_array(
+    fn set_float_array(
         &mut self,
         aid: &str,
         param: &str,
@@ -501,7 +478,7 @@ pub trait ParameterManipulation {
         index: i64,
     ) -> Result<usize, i32> {
         let req = ParameterReq::set(param, b64_obj_from_f32(value.clone()), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
         }
@@ -530,7 +507,7 @@ pub trait ParameterManipulation {
             return Err(-1); // Fails equality check
         }
     }
-    async fn set_double_array(
+    fn set_double_array(
         &mut self,
         aid: &str,
         param: &str,
@@ -538,7 +515,7 @@ pub trait ParameterManipulation {
         index: i64,
     ) -> Result<usize, i32> {
         let req = ParameterReq::set(param, b64_obj_from_f64(value.clone()), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
         }
@@ -564,7 +541,7 @@ pub trait ParameterManipulation {
             return Err(-1); // Fails equality check
         }
     }
-    async fn set_string_array(
+    fn set_string_array(
         &mut self,
         aid: &str,
         param: &str,
@@ -572,7 +549,7 @@ pub trait ParameterManipulation {
         index: i64,
     ) -> Result<usize, i32> {
         let req = ParameterReq::set(param, Value::from(value.clone()), index);
-        let rsp = self.param_req(aid, req).await;
+        let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
         }

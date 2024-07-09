@@ -1,17 +1,6 @@
 use std::env;
 
-use fjage_rs::{
-    core::message::{Message, Performative},
-    remote::{
-        file::{GetFileReq, GetFileRsp},
-        gateway::Gateway,
-    },
-};
-use serde_json::{json, Value};
-use tokio::{
-    fs::{self, File, OpenOptions},
-    io::AsyncWriteExt,
-};
+use fjage_rs::api::gateway::Gateway;
 
 static HELP_STRING: &str = r##"
 Usage: rx_datagram <hostname> <port>
@@ -19,8 +8,7 @@ Usage: rx_datagram <hostname> <port>
 receive a datagram (interprets contents as string).
 "##;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let args: Vec<String> = env::args().collect();
     // Validate arguments
     if args.len() < 3 {
@@ -36,20 +24,16 @@ async fn main() {
     let port = port.unwrap();
 
     // Connect to gateway
-    let mut gw = Gateway::new_tcp(hostname, port).await;
+    let mut gw = Gateway::new_tcp(hostname, port);
 
     // Find and subscribe to all agents advertising the DATAGRAM service
-    let dsp = gw
-        .agents_for_service("org.arl.unet.Services.DATAGRAM")
-        .await;
+    let dsp = gw.agents_for_service("org.arl.unet.Services.DATAGRAM");
     for agent in dsp.iter() {
-        gw.subscribe_agent(&agent).await;
+        gw.subscribe_agent(&agent);
     }
 
     // Receive, filtering for DatagramNtf
-    let rsp = gw
-        .recv(Some(vec!["org.arl.unet.DatagramNtf".to_string()]), None)
-        .await;
+    let rsp = gw.recv(Some(vec!["org.arl.unet.DatagramNtf".to_string()]), None);
     let rsp = rsp.unwrap();
 
     if rsp.data.fields.contains_key("data") {
