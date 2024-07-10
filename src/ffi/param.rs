@@ -62,8 +62,8 @@ pub unsafe extern "C" fn fjage_param_get_long(
     aid: *const c_char,
     param: *const c_char,
     ndx: c_int,
-    defval: c_long,
-) -> c_long {
+    defval: i64,
+) -> i64 {
     let val = gw.as_mut().unwrap().get_long(
         &c_api_cstr_to_string(aid),
         &c_api_cstr_to_string(param),
@@ -377,7 +377,7 @@ pub unsafe extern "C" fn fjage_param_set_long(
     gw: *mut Gateway,
     aid: *const c_char,
     param: *const c_char,
-    value: c_long,
+    value: i64,
     ndx: c_int,
 ) -> c_int {
     //unimplemented!();
@@ -526,7 +526,7 @@ pub unsafe extern "C" fn fjage_param_set_long_array(
     gw: *mut Gateway,
     aid: *const c_char,
     param: *const c_char,
-    value: *const c_long,
+    value: *const i64,
     len: c_int,
     ndx: c_int,
 ) -> c_int {
@@ -536,7 +536,6 @@ pub unsafe extern "C" fn fjage_param_set_long_array(
         Vec::from(slice::from_raw_parts(value, len as usize)),
         ndx as i64,
     );
-
     if result.is_ok() {
         return 0;
     } else {
