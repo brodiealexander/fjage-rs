@@ -409,7 +409,7 @@ pub trait ParameterManipulation {
         value: Vec<i32>,
         index: i64,
     ) -> Result<usize, i32> {
-        let req = ParameterReq::set(param, b64_obj_from_i32(value.clone()), index);
+        let req = ParameterReq::set(param, b64_obj_from_i32(&value), index);
         let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
@@ -443,7 +443,7 @@ pub trait ParameterManipulation {
         value: Vec<i64>,
         index: i64,
     ) -> Result<usize, i32> {
-        let req = ParameterReq::set(param, b64_obj_from_i64(value.clone()), index);
+        let req = ParameterReq::set(param, b64_obj_from_i64(&value), index);
         let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
@@ -477,7 +477,7 @@ pub trait ParameterManipulation {
         value: Vec<f32>,
         index: i64,
     ) -> Result<usize, i32> {
-        let req = ParameterReq::set(param, b64_obj_from_f32(value.clone()), index);
+        let req = ParameterReq::set(param, b64_obj_from_f32(&value), index);
         let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)
@@ -514,7 +514,7 @@ pub trait ParameterManipulation {
         value: Vec<f64>,
         index: i64,
     ) -> Result<usize, i32> {
-        let req = ParameterReq::set(param, b64_obj_from_f64(value.clone()), index);
+        let req = ParameterReq::set(param, b64_obj_from_f64(&value), index);
         let rsp = self.param_req(aid, req);
         if rsp.is_none() {
             return Err(-1); // Timeout (most likely)

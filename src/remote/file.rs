@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::core::message::{Message, Performative};
+use crate::protocol::base64::*;
 
 #[allow(non_camel_case_types, non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -104,22 +106,34 @@ impl PutFileReq {
             sender: String::new(),
             sentAt: 0,
             filename: filename.to_string(),
-            contents: Some(Vec::new()),
+            contents: None,
             ofs: 0,
         };
     }
-    pub fn new_contents(filename: &str, contents: &str) -> PutFileReq {
+    pub fn new_contents_str(filename: &str, contents: &str) -> PutFileReq {
         let mut req = PutFileReq::new(filename);
         req.contents = Some(contents.as_bytes().to_vec());
+        return req;
+    }
+    pub fn new_contents(filename: &str, contents: &[u8]) -> PutFileReq {
+        let mut req = PutFileReq::new(filename);
+        req.contents = Some(contents.to_vec());
         return req;
     }
     pub fn from_msg(msg: Message) -> PutFileReq {
         return serde_json::from_value(serde_json::to_value(msg.data).unwrap()).unwrap();
     }
     pub fn to_msg(&mut self) -> Message {
-        return Message {
+        let mut b64_obj = Value::Null;
+        if self.contents.is_some() {
+            b64_obj = b64_obj_from_u8(self.contents.as_ref().unwrap());
+        }
+
+        let mut msg = Message {
             clazz: "org.arl.fjage.shell.PutFileReq".to_string(),
             data: serde_json::from_value(serde_json::to_value(self).unwrap()).unwrap(),
         };
+        msg.data.fields.insert("contents".to_string(), b64_obj);
+        return msg;
     }
 }
