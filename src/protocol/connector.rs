@@ -56,8 +56,8 @@ impl TcpConnector {
             }
             let mut frame = frame.unwrap();
             //println!("\nTcpConnector >> Remote: {:?}", frame);
-            writer.write(frame.to_json().as_bytes()).await.unwrap();
-            writer.write(b"\n").await.unwrap();
+            writer.write_all(frame.to_json().as_bytes()).await.unwrap();
+            writer.write_all(b"\n").await.unwrap();
             writer.flush().await.unwrap();
         }
     }
@@ -136,8 +136,8 @@ impl SerialPortConnector {
             }
             let mut frame = frame.unwrap();
             //println!("\nTcpConnector >> Remote: {:?}", frame);
-            writer.write(frame.to_json().as_bytes()).await.unwrap();
-            writer.write(b"\n").await.unwrap();
+            writer.write_all(frame.to_json().as_bytes()).await.unwrap();
+            writer.write_all(b"\n").await.unwrap();
             writer.flush().await.unwrap();
         }
     }
